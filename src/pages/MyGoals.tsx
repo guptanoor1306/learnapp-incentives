@@ -86,6 +86,11 @@ function resolveSessionProfile(profiles: Profile[]): Profile | null {
   return null;
 }
 
+const goalTypeBadgeClass = (goalType: string) =>
+  goalType === 'personal'
+    ? 'goal-type-personal'
+    : 'goal-type-business';
+
 export default function MyGoals() {
   const [profilesList, setProfilesList] = useState<Profile[]>([]);
   const [cycles, setCycles] = useState<IncentiveCycle[]>([]);
@@ -1209,7 +1214,7 @@ export default function MyGoals() {
                     <span>Business Goals</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 bg-gradient-to-tr from-emerald-600 to-green-400 rounded-sm inline-block border border-emerald-500/20" />
+                    <span className="w-3 h-3 bg-gradient-to-tr from-fuchsia-600 to-pink-400 rounded-sm inline-block border border-fuchsia-500/20" />
                     <span>Personal Goals</span>
                   </div>
                 </div>
@@ -1290,7 +1295,7 @@ export default function MyGoals() {
                               {employee.personalContrib > 0 && (
                                 <div 
                                   style={{ width: `${employee.personalContrib}%` }}
-                                  className="h-full bg-gradient-to-r from-emerald-600 to-green-400 relative border-r border-[#0e0e14]/40"
+                                  className="h-full bg-gradient-to-r from-fuchsia-600 to-pink-400 relative border-r border-[#0e0e14]/40"
                                   title={`Personal Progress: ${Math.round(employee.pProgress)}% (Contributes ${employee.personalContrib.toFixed(1)}%)`}
                                 >
                                   <div className="absolute inset-x-0 top-0 h-1/2 bg-white/10 pointer-events-none" />
@@ -1389,14 +1394,12 @@ export default function MyGoals() {
                                     <div className="flex justify-between items-start gap-4">
                                       <div>
                                         <div className="flex items-center gap-1.5 flex-wrap">
-                                          <span className="font-display font-black text-white uppercase tracking-tight">{goal.title}</span>
-                                          <span className={`text-[7px] px-1 rounded font-bold uppercase ${
-                                            goal.goal_type === 'personal' ? 'bg-zinc-900 text-zinc-400' : 'bg-emerald-950/40 text-[#00ff88]'
-                                          }`}>
+                                          <span className="goal-title text-sm text-white">{goal.title}</span>
+                                          <span className={`text-[7px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide ${goalTypeBadgeClass(goal.goal_type)}`}>
                                             {goal.goal_type}
                                           </span>
                                         </div>
-                                        <p className="text-zinc-400 text-[11px] leading-relaxed mt-1">{goal.description}</p>
+                                        <p className="goal-description text-zinc-400 text-[11px] mt-1">{goal.description}</p>
                                       </div>
                                       <span className="text-xl shrink-0 select-none bg-zinc-950 w-8 h-8 rounded-lg flex items-center justify-center border border-zinc-900">
                                         {goalSmiley.emoji}
@@ -1563,7 +1566,7 @@ export default function MyGoals() {
                 <div className="flex gap-2 w-full sm:w-auto justify-end">
                   <button
                     onClick={() => handleOpenCreateForm('personal', loggedInProfile)}
-                    className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-850 text-zinc-300 font-display font-bold text-xs uppercase rounded-lg border border-zinc-800 transition-colors cursor-pointer"
+                    className="px-3 py-1.5 bg-fuchsia-950/40 hover:bg-fuchsia-900/40 text-pink-300 font-sans font-semibold text-xs rounded-lg border border-fuchsia-500/30 transition-colors cursor-pointer"
                   >
                     + Add Personal Goal
                   </button>
@@ -1589,17 +1592,15 @@ export default function MyGoals() {
                         <div className="flex justify-between items-start gap-4 pb-3 border-b border-zinc-900">
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className={`text-[8px] font-mono px-1.5 py-0.5 rounded uppercase ${
-                                goal.goal_type === 'personal' ? 'bg-zinc-900 text-zinc-400' : 'bg-emerald-950/50 text-[#00ff88]'
-                              }`}>
+                              <span className={`text-[8px] font-sans px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide ${goalTypeBadgeClass(goal.goal_type)}`}>
                                 {goal.goal_type} Goal
                               </span>
                               <span className="text-[8px] font-mono px-1.5 py-0.5 rounded uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">
                                 Proof Mandatory to Progress
                               </span>
                             </div>
-                            <h3 className="text-base font-display font-black text-white uppercase mt-1">{goal.title}</h3>
-                            <p className="text-xs text-zinc-400 font-light mt-0.5">{goal.description}</p>
+                            <h3 className="goal-title text-base text-white mt-1">{goal.title}</h3>
+                            <p className="goal-description text-xs text-zinc-400 mt-0.5">{goal.description}</p>
                           </div>
 
                           {canEditGoals && (
@@ -1900,9 +1901,9 @@ export default function MyGoals() {
                   <button
                     type="button"
                     onClick={() => setGoalType('personal')}
-                    className={`flex-1 py-2 text-xs font-bold uppercase rounded-lg border transition-all ${
+                    className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-all ${
                       goalType === 'personal'
-                        ? 'bg-[#00ff88] text-black border-[#00ff88]'
+                        ? 'bg-fuchsia-950/50 text-pink-300 border-fuchsia-500/40'
                         : 'bg-zinc-900 text-zinc-400 border-zinc-800'
                     }`}
                   >
@@ -1911,9 +1912,9 @@ export default function MyGoals() {
                   <button
                     type="button"
                     onClick={() => setGoalType('business')}
-                    className={`flex-1 py-2 text-xs font-bold uppercase rounded-lg border transition-all ${
+                    className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-all ${
                       goalType === 'business'
-                        ? 'bg-[#00ff88] text-black border-[#00ff88]'
+                        ? 'bg-emerald-950/50 text-[#00ff88] border-emerald-500/40'
                         : 'bg-zinc-900 text-zinc-400 border-zinc-800'
                     }`}
                   >
@@ -2093,7 +2094,7 @@ export default function MyGoals() {
 
             <div className="space-y-1">
               <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wide">Goal Title</p>
-              <h4 className="text-xs font-display font-black text-[#00ff88] uppercase">{progressProofGoal.title}</h4>
+              <h4 className="goal-title text-xs text-[#00ff88]">{progressProofGoal.title}</h4>
               <p className="text-xs text-zinc-400">
                 You are advancing progress to <span className="font-bold text-white">{progressProofTargetPct}%</span>.
               </p>

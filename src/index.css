@@ -1,17 +1,46 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto:wght@300;400;500;700;900&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", "Roboto", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Roboto", "Inter", sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: #030305; /* Deep Aurora Obsidian */
-  color: #f1f1f5; /* Pure crisp light gray text */
-  letter-spacing: -0.01em;
+  background-color: #030305;
+  color: #f1f1f5;
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+.goal-title {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.45;
+}
+
+.goal-description {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.5;
+}
+
+.goal-type-personal {
+  background-color: rgb(88 28 135 / 0.35);
+  color: rgb(244 114 182);
+  border: 1px solid rgb(192 132 252 / 0.35);
+}
+
+.goal-type-business {
+  background-color: rgb(6 78 59 / 0.35);
+  color: rgb(74 222 128);
+  border: 1px solid rgb(16 185 129 / 0.35);
 }
 
 /* Custom premium scrollbar for Aurora theme */
