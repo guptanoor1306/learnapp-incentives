@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { 
-  Flame, Plus, Trash2, Eye, Edit3, X, Sparkles, Send, Compass, Lock, Link as LinkIcon, Upload, ExternalLink, RefreshCw, Search, FileText, Video, Image as ImageIcon, UploadCloud, Download, LogOut, Filter, Users, Globe, Info
+  Flame, Plus, Trash2, Eye, Edit3, X, Sparkles, Send, Compass, Lock, Link as LinkIcon, Upload, ExternalLink, RefreshCw, Search, FileText, Video, Image as ImageIcon, UploadCloud, Download, LogOut, Filter, Users, Globe
 } from 'lucide-react';
 import { Profile, IncentiveCycle, Goal, Proof } from '../types';
 import { 
@@ -20,52 +20,85 @@ const isWebUrl = (proof?: Proof | null): boolean => {
   );
 };
 
-const compressImage = (base64Str: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.src = base64Str;
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 900;
-      const MAX_HEIGHT = 900;
-      let width = img.width;
-      let height = img.height;
+const MAX_IMAGE_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_PROOF_DATA_URL_LENGTH = Math.ceil(MAX_IMAGE_FILE_BYTES * 4 / 3) + 512;
+const MAX_DIRECT_VIDEO_PDF_BYTES = 500 * 1024;
 
-      if (width > height) {
-        if (width > MAX_WIDTH) {
-          height *= MAX_WIDTH / width;
-          width = MAX_WIDTH;
-        }
-      } else {
-        if (height > MAX_HEIGHT) {
-          width *= MAX_HEIGHT / height;
-          height = MAX_HEIGHT;
-        }
-      }
-
-      canvas.width = Math.round(width);
-      canvas.height = Math.round(height);
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        let result = canvas.toDataURL('image/jpeg', 0.65);
-        if (result.length > 500000) {
-          const secondCanvas = document.createElement('canvas');
-          secondCanvas.width = Math.round(width * 0.7);
-          secondCanvas.height = Math.round(height * 0.7);
-          const secondCtx = secondCanvas.getContext('2d');
-          if (secondCtx) {
-            secondCtx.drawImage(img, 0, 0, secondCanvas.width, secondCanvas.height);
-            result = secondCanvas.toDataURL('image/jpeg', 0.5);
-          }
-        }
-        resolve(result);
-      } else {
-        resolve(base64Str);
-      }
-    };
-    img.onerror = (err) => reject(err);
+const readFileAsDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => resolve(event.target?.result as string);
+    reader.onerror = () => reject(new Error('Could not read file.'));
+    reader.readAsDataURL(file);
   });
+
+const prepareImageForUpload = (base64Str: string, maxLength = MAX_PROOF_DATA_URL_LENGTH): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const srcWidth = img.width;
+      const srcHeight = img.height;
+      let maxDim = 2400;
+      let quality = 0.85;
+
+      const render = (): string | null => {
+        const scale = Math.min(1, maxDim / Math.max(srcWidth, srcHeight));
+        const width = Math.max(1, Math.round(srcWidth * scale));
+        const height = Math.max(1, Math.round(srcHeight * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        ctx.drawImage(img, 0, 0, width, height);
+        return canvas.toDataURL('image/jpeg', quality);
+      };
+
+      let result = render();
+      while (result && result.length > maxLength && (quality > 0.4 || maxDim > 640)) {
+        if (quality > 0.4) quality -= 0.08;
+        else maxDim = Math.round(maxDim * 0.8);
+        result = render();
+      }
+
+      if (!result) {
+        reject(new Error('Could not process image.'));
+        return;
+      }
+      if (result.length > maxLength) {
+        reject(new Error('Image is still too large. Use Paste link for very large files.'));
+        return;
+      }
+      resolve(result);
+    };
+    img.onerror = () => reject(new Error('Could not read image. Try JPG/PNG or use Paste link.'));
+    img.src = base64Str;
+  });
+
+const prepareProofFilePayload = async (file: File): Promise<string> => {
+  const rawData = await readFileAsDataUrl(file);
+
+  if (!file.type.startsWith('image/')) {
+    if (rawData.length > MAX_PROOF_DATA_URL_LENGTH) {
+      throw new Error('File is too large. Use Paste link for files over 500 KB.');
+    }
+    return rawData;
+  }
+
+  if (file.size > MAX_IMAGE_FILE_BYTES) {
+    throw new Error('Image must be 5 MB or smaller.');
+  }
+
+  if (rawData.length <= MAX_PROOF_DATA_URL_LENGTH && (file.type === 'image/jpeg' || file.type === 'image/webp')) {
+    return rawData;
+  }
+
+  try {
+    return await prepareImageForUpload(rawData);
+  } catch {
+    if (rawData.length <= MAX_PROOF_DATA_URL_LENGTH) return rawData;
+    throw new Error('Image is too large. Try a smaller file or use Paste link.');
+  }
 };
 
 const LOGIN_ID_KEY = 'aurora_logged_in_id';
@@ -90,6 +123,15 @@ const goalTypeBadgeClass = (goalType: string) =>
   goalType === 'personal'
     ? 'goal-type-personal'
     : 'goal-type-business';
+
+function formatDisplayLabel(value: string): string {
+  if (!value?.trim()) return '';
+  return value
+    .trim()
+    .split(/\s+/)
+    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : ''))
+    .join(' ');
+}
 
 export default function MyGoals() {
   const [profilesList, setProfilesList] = useState<Profile[]>([]);
@@ -153,50 +195,20 @@ export default function MyGoals() {
   const [proofModalTab, setProofModalTab] = useState<'upload' | 'link'>('upload');
   const [showErrorDetails, setShowErrorDetails] = useState(false);
 
-  const renderError = (rawMsg: string, onClear: () => void) => {
-    if (!rawMsg) return null;
+  const renderNotice = (message: string, onClear: () => void) => {
+    if (!message) return null;
 
     return (
-      <div className="p-4 bg-amber-950/30 border border-amber-500/40 text-amber-200 text-xs rounded-xl space-y-3 animate-in fade-in font-sans shadow-lg">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px] font-black uppercase tracking-wider border border-amber-500/30">
-                Notice
-              </span>
-            </div>
-            
-            <div className="space-y-2 text-zinc-200 text-xs">
-              <ul className="space-y-2 text-zinc-300 text-xs font-medium">
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                  <span><strong className="text-amber-300 font-bold">File is too big</strong></span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                  <span><strong className="text-white">Try another file</strong></span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                  <span><strong className="text-white">Try again</strong></span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                  <span><strong className="text-amber-300 font-bold">Or put a link</strong></span>
-                </li>
-              </ul>
-            </div>
-          </div>
-          
-          <button 
-            type="button" 
-            onClick={onClear} 
-            className="text-zinc-400 hover:text-white shrink-0 p-1.5 bg-zinc-900 rounded-lg border border-zinc-800 transition-colors cursor-pointer"
-            title="Dismiss notice"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+      <div className="p-3 bg-amber-950/30 border border-amber-500/40 text-amber-100 text-sm rounded-xl flex items-start justify-between gap-3 font-sans">
+        <p className="leading-relaxed">{message}</p>
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-zinc-400 hover:text-white shrink-0 p-1"
+          title="Dismiss"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
     );
   };
@@ -577,14 +589,8 @@ export default function MyGoals() {
       let finalFileSize = 0;
 
       if (proofModalTab === 'upload' && progressProofFile) {
-        if (progressProofFile.type.startsWith('image/') && progressProofFile.size > 5 * 1024 * 1024) {
-          setProgressProofError('Image file exceeds the 5 MB limit. Please select a smaller image or switch to the "Attach Link" tab.');
-          setProgressProofLoading(false);
-          return;
-        }
-
-        if ((progressProofFile.type.startsWith('video/') || progressProofFile.type === 'application/pdf') && progressProofFile.size > 500 * 1024) {
-          setProgressProofError('Direct Video/PDF upload limit is 500 KB. For larger videos or PDFs, please switch to the "Attach Link" tab to attach a link (Google Drive, Loom, YouTube, Figma, Dropbox, etc.).');
+        if ((progressProofFile.type.startsWith('video/') || progressProofFile.type === 'application/pdf') && progressProofFile.size > MAX_DIRECT_VIDEO_PDF_BYTES) {
+          setProgressProofError('Video/PDF must be 500 KB or smaller, or use Paste link.');
           setProgressProofLoading(false);
           return;
         }
@@ -593,26 +599,11 @@ export default function MyGoals() {
         finalFileType = progressProofFile.type;
         finalFileSize = progressProofFile.size;
 
-        const base64Data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = async (event) => {
-            const rawData = event.target?.result as string;
-            let finalData = rawData;
-            if (progressProofFile.type.startsWith('image/')) {
-              try {
-                finalData = await compressImage(rawData);
-              } catch (err) {
-                console.warn('Compression failed, using raw data', err);
-              }
-            }
-            resolve(finalData);
-          };
-          reader.onerror = () => reject(new Error('Error reading file'));
-          reader.readAsDataURL(progressProofFile);
-        });
-
-        if (base64Data.length > 700000) {
-          setProgressProofError('File payload is too large for database storage (exceeds ~500KB limit). Please upload a smaller screenshot or attach a URL link (Google Drive, Loom, Figma, etc.) under the "Attach Link" tab.');
+        let base64Data: string;
+        try {
+          base64Data = await prepareProofFilePayload(progressProofFile);
+        } catch (err: any) {
+          setProgressProofError(err.message || 'Could not prepare file for upload.');
           setProgressProofLoading(false);
           return;
         }
@@ -725,13 +716,13 @@ export default function MyGoals() {
       return;
     }
 
-    if (file.type.startsWith('image/') && file.size > 5 * 1024 * 1024) {
-      setErrorMsg('Image file exceeds the 5 MB limit. Please select a smaller image or attach an external URL link.');
+    if (file.type.startsWith('image/') && file.size > MAX_IMAGE_FILE_BYTES) {
+      setErrorMsg('Image must be 5 MB or smaller.');
       return;
     }
 
-    if ((file.type.startsWith('video/') || file.type === 'application/pdf') && file.size > 500 * 1024) {
-      setErrorMsg('Direct Video/PDF upload limit is 500 KB. For larger videos or PDFs, please attach a link (Google Drive, Loom, YouTube, Figma, Dropbox, etc.).');
+    if ((file.type.startsWith('video/') || file.type === 'application/pdf') && file.size > MAX_DIRECT_VIDEO_PDF_BYTES) {
+      setErrorMsg('Video/PDF must be 500 KB or smaller, or paste a link instead.');
       return;
     }
 
@@ -739,57 +730,33 @@ export default function MyGoals() {
     setErrorMsg('');
     setSuccessMsg('');
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const rawData = event.target?.result as string;
-      
-      let finalData = rawData;
-      if (file.type.startsWith('image/')) {
-        try {
-          finalData = await compressImage(rawData);
-        } catch (e) {
-          console.warn("Failed to compress image, using original", e);
-        }
-      }
+    try {
+      const finalData = await prepareProofFilePayload(file);
+      const uploaderId = resolveSessionProfile(profilesList)?.id;
+      if (!uploaderId) throw new Error('Please sign in to upload proofs.');
 
-      if (finalData.length > 700000) {
-        setErrorMsg('File payload is too large for database storage (exceeds ~500KB limit). Please upload a smaller screenshot or attach an external URL link instead.');
-        setProofSubmitLoading(false);
-        return;
-      }
+      const { error } = await supabase
+        .from('proofs')
+        .insert({
+          goal_id: goalId,
+          uploaded_by: uploaderId,
+          external_url: finalData,
+          file_name: file.name,
+          file_type: file.type,
+          file_size: file.size,
+          note: `Uploaded proof file: ${file.name}`,
+          created_at: new Date().toISOString()
+        });
 
-      try {
-        const uploaderId = resolveSessionProfile(profilesList)?.id;
-        if (!uploaderId) throw new Error('Please sign in to upload proofs.');
-
-        const { error } = await supabase
-          .from('proofs')
-          .insert({
-            goal_id: goalId,
-            uploaded_by: uploaderId,
-            external_url: finalData,
-            file_name: file.name,
-            file_type: file.type,
-            file_size: file.size,
-            note: `Uploaded proof file: ${file.name}`,
-            created_at: new Date().toISOString()
-          });
-
-        if (error) throw error;
-        setSuccessMsg('Proof uploaded and logged successfully!');
-        setUploadingProofForGoalId(null);
-        fetchGoalsAndProofs(selectedCycleId);
-      } catch (err: any) {
-        setErrorMsg(`Failed to save proof: ${err.message}`);
-      } finally {
-        setProofSubmitLoading(false);
-      }
-    };
-    reader.onerror = () => {
-      setErrorMsg('Error reading file.');
+      if (error) throw error;
+      setSuccessMsg('Proof uploaded successfully.');
+      setUploadingProofForGoalId(null);
+      fetchGoalsAndProofs(selectedCycleId);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to save proof.');
+    } finally {
       setProofSubmitLoading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleCheerEmployee = async (receiverId: string) => {
@@ -1069,8 +1036,8 @@ export default function MyGoals() {
             {loggedInProfile && (
               <div className="flex items-center gap-2.5 bg-zinc-900/80 border border-zinc-800/80 pl-3 pr-2 py-1 rounded-xl">
                 <div className="flex flex-col text-right">
-                  <span className="text-[10px] font-display font-black text-white uppercase tracking-tight leading-none">{loggedInProfile.full_name}</span>
-                  <span className="text-[8px] font-mono text-zinc-500 uppercase tracking-wider">{loggedInProfile.department}</span>
+                  <span className="text-sm font-semibold text-white leading-none">{formatDisplayLabel(loggedInProfile.full_name)}</span>
+                  <span className="text-xs text-zinc-500">{formatDisplayLabel(loggedInProfile.department)}</span>
                 </div>
                 <button
                   onClick={handleLogout}
@@ -1092,12 +1059,12 @@ export default function MyGoals() {
         {/* Action Alerts */}
         {errorMsg && (
           <div className="mb-6 normal-case">
-            {renderError(errorMsg, () => setErrorMsg(''))}
+            {renderNotice(errorMsg, () => setErrorMsg(''))}
           </div>
         )}
 
         {successMsg && (
-          <div className="mb-6 p-4 bg-emerald-950/20 border border-emerald-500/20 text-emerald-300 text-xs font-mono uppercase rounded-xl flex items-center justify-between gap-3 animate-in fade-in">
+          <div className="mb-6 p-4 bg-emerald-950/20 border border-emerald-500/20 text-emerald-300 text-sm rounded-xl flex items-center justify-between gap-3 animate-in fade-in font-sans">
             <span>{successMsg}</span>
             <button onClick={() => setSuccessMsg('')} className="text-emerald-400 hover:text-white">
               <X className="w-4 h-4" />
@@ -1251,15 +1218,15 @@ export default function MyGoals() {
                           
                           <div className="truncate">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-display font-black text-xs text-white uppercase tracking-tight group-hover:text-emerald-400 transition-colors">
-                                {employee.full_name}
+                              <span className="text-sm font-semibold text-white group-hover:text-emerald-400 transition-colors">
+                                {formatDisplayLabel(employee.full_name)}
                               </span>
                               {loggedInProfile && employee.id === loggedInProfile.id && (
                                 <span className="text-[7px] px-1 bg-pink-500/20 text-pink-400 font-mono font-bold rounded uppercase tracking-wider">You</span>
                               )}
                             </div>
-                            <span className="text-[9px] font-mono text-zinc-500 uppercase font-bold">
-                              {employee.department}
+                            <span className="text-xs text-zinc-500 font-medium">
+                              {formatDisplayLabel(employee.department)}
                             </span>
                           </div>
                         </div>
@@ -1557,10 +1524,10 @@ export default function MyGoals() {
               {/* My Workspace Header */}
               <div className="bg-[#0e0e14] border border-zinc-900 p-6 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 shadow-xl">
                 <div>
-                  <span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-[9px] font-mono font-black text-zinc-400 uppercase tracking-wide">
-                    {loggedInProfile.department}
+                  <span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-xs text-zinc-400">
+                    {formatDisplayLabel(loggedInProfile.department)}
                   </span>
-                  <h2 className="text-xl font-display font-black text-white mt-1.5 uppercase">{loggedInProfile.full_name}</h2>
+                  <h2 className="text-xl font-semibold text-white mt-1.5">{formatDisplayLabel(loggedInProfile.full_name)}</h2>
                 </div>
 
                 <div className="flex gap-2 w-full sm:w-auto justify-end">
@@ -1661,8 +1628,8 @@ export default function MyGoals() {
 
                         {/* Proof logs */}
                         <div className="pt-3 border-t border-zinc-900/60 space-y-3">
-                          <div className="flex justify-between items-center text-[10px] font-mono text-zinc-400">
-                            <span>PROOFS OF WORK ({goalProofs.length})</span>
+                          <div className="flex justify-between items-center text-sm text-zinc-400 font-sans">
+                            <span>Proofs ({goalProofs.length})</span>
                             {canEditGoals && (
                               uploadingProofForGoalId !== goal.id ? (
                                 <button
@@ -1684,16 +1651,9 @@ export default function MyGoals() {
 
                           {canEditGoals && uploadingProofForGoalId === goal.id && (
                           <div className="bg-zinc-950/80 p-5 rounded-xl border border-zinc-900 space-y-3 animate-in slide-in-from-top-2">
-                            <div className="bg-zinc-900/90 border border-zinc-800/80 rounded-xl p-3.5 text-[10px] space-y-1.5">
-                              <p className="text-[#00ff88] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5">
-                                <Info className="w-3.5 h-3.5 text-[#00ff88]" /> Proof Upload Limits & Guidelines
-                              </p>
-                              <ul className="text-zinc-300 space-y-1 pl-4 list-disc font-sans text-[11px] leading-snug">
-                                <li><strong className="text-white">Images (JPG, PNG, WEBP):</strong> Up to <strong>5 MB</strong> max size (automatically compressed).</li>
-                                <li><strong className="text-white">PDFs & Videos (MP4, MOV):</strong> Up to <strong>500 KB</strong> direct file upload limit.</li>
-                                <li><strong className="text-white">For larger files or links:</strong> Attach a link (Google Drive, Loom, YouTube, Figma, Dropbox, GitHub) in the comment/reference section.</li>
-                              </ul>
-                            </div>
+                            <p className="text-xs text-zinc-400">
+                              Images up to 5 MB. For larger files, paste a link in the note after upload.
+                            </p>
 
                             <div
                               onDragOver={(e) => {
@@ -1724,16 +1684,16 @@ export default function MyGoals() {
                               }}
                             >
                               <UploadCloud className={`w-8 h-8 mb-2 transition-transform ${isDragging === goal.id ? 'scale-110 text-[#00ff88]' : 'text-zinc-500'}`} />
-                              <span className="text-[11px] text-zinc-300 text-center font-medium">
-                                Drag & drop file here, or <span className="text-[#00ff88] hover:underline">browse</span>
+                              <span className="text-sm text-zinc-300 text-center font-medium">
+                                Drag a file here, or <span className="text-[#00ff88] hover:underline">browse</span>
                               </span>
-                              <span className="text-[9px] text-zinc-600 uppercase font-mono mt-1">supports jpg, png, mp4, pdf</span>
+                              <span className="text-xs text-zinc-500 mt-1">JPG, PNG, MP4, PDF</span>
                             </div>
 
                             {proofSubmitLoading && (
-                              <div className="flex items-center justify-center gap-2 text-[10px] font-mono text-[#00ff88] uppercase tracking-wider">
+                              <div className="flex items-center justify-center gap-2 text-sm text-[#00ff88]">
                                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                Processing & Saving proof...
+                                Saving proof...
                               </div>
                             )}
                           </div>
@@ -1845,8 +1805,8 @@ export default function MyGoals() {
           <div className="bg-[#0e0e14] border border-zinc-900 rounded-xl max-w-md w-full overflow-hidden shadow-2xl relative z-10 p-6 space-y-4 font-sans">
             
             <div className="flex justify-between items-center pb-2 border-b border-zinc-900">
-              <h3 className="text-base font-display font-black text-white uppercase">
-                {editingGoal ? 'Edit Goal' : 'Declare Goal'}
+              <h3 className="text-base font-semibold text-white">
+                {editingGoal ? 'Edit goal' : 'Add goal'}
               </h3>
               <button onClick={() => setShowGoalForm(false)} className="text-zinc-500 hover:text-white">
                 <X className="w-4 h-4" />
@@ -1856,7 +1816,7 @@ export default function MyGoals() {
             <div className="space-y-4">
               
               <div>
-                <label className={`block text-[10px] font-mono uppercase mb-1 ${showTitleError ? 'text-red-400' : 'text-zinc-400'}`}>Goal Title</label>
+                <label className={`block text-sm mb-1 ${showTitleError ? 'text-red-400' : 'text-zinc-400'}`}>Title</label>
                 <input
                   type="text"
                   required
@@ -1876,7 +1836,7 @@ export default function MyGoals() {
               </div>
 
               <div>
-                <label className={`block text-[10px] font-mono uppercase mb-1 ${showDescriptionError ? 'text-red-400' : 'text-zinc-400'}`}>Description and Scope</label>
+                <label className={`block text-sm mb-1 ${showDescriptionError ? 'text-red-400' : 'text-zinc-400'}`}>Description</label>
                 <textarea
                   required
                   rows={3}
@@ -1896,7 +1856,7 @@ export default function MyGoals() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-mono text-zinc-400 uppercase mb-1">Goal Type</label>
+                <label className="block text-sm text-zinc-400 mb-1">Type</label>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -1929,7 +1889,7 @@ export default function MyGoals() {
               <button
                 type="button"
                 onClick={() => setShowGoalForm(false)}
-                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-850 text-white text-xs font-display font-bold uppercase rounded-lg border border-zinc-800"
+                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-850 text-white text-sm rounded-lg border border-zinc-800"
               >
                 Cancel
               </button>
@@ -1937,9 +1897,9 @@ export default function MyGoals() {
                 type="button"
                 onClick={handleSaveGoal}
                 disabled={formSubmitLoading}
-                className="px-4 py-2 bg-[#00ff88] hover:bg-[#33ff99] text-black text-xs font-display font-black uppercase rounded-lg transition-all"
+                className="px-4 py-2 bg-[#00ff88] hover:bg-[#33ff99] text-black text-sm font-semibold rounded-lg transition-all"
               >
-                {formSubmitLoading ? 'Saving...' : 'Save Goal'}
+                {formSubmitLoading ? 'Saving...' : editingGoal ? 'Save changes' : 'Add goal'}
               </button>
             </div>
 
@@ -1957,19 +1917,19 @@ export default function MyGoals() {
             <div className="flex justify-between items-center p-4 border-b border-zinc-900 bg-zinc-950/50">
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-[#00ff88]" />
-                <h3 className="text-sm font-display font-black text-white uppercase tracking-tight truncate max-w-[400px]">
-                  {selectedPreviewProof.file_name || 'Proof File'}
+                <h3 className="text-sm font-semibold text-white truncate max-w-[400px]">
+                  {selectedPreviewProof.file_name || 'Proof'}
                 </h3>
               </div>
               <div className="flex items-center gap-2">
                 {canDeleteProof(selectedPreviewProof, allGoals.find(g => g.id === selectedPreviewProof.goal_id)?.employee_id) && (
                   <button
                     onClick={(e) => handleDeleteProof(selectedPreviewProof.id, e)}
-                    className="px-2.5 py-1.5 bg-red-950/40 hover:bg-red-900/20 text-red-400 font-display font-bold text-[9px] uppercase rounded-lg border border-red-950/30 transition-all flex items-center gap-1 cursor-pointer animate-fade-in"
-                    title="Delete Proof"
+                    className="px-2.5 py-1.5 bg-red-950/40 hover:bg-red-900/20 text-red-400 text-xs rounded-lg border border-red-950/30 transition-all flex items-center gap-1 cursor-pointer"
+                    title="Delete proof"
                   >
                     <Trash2 className="w-3 h-3" />
-                    Delete Proof
+                    Delete
                   </button>
                 )}
                 <button onClick={() => setSelectedPreviewProof(null)} className="text-zinc-500 hover:text-white p-1 rounded-lg hover:bg-zinc-900">
@@ -1986,15 +1946,12 @@ export default function MyGoals() {
                       <div className="w-14 h-14 rounded-2xl bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-center text-[#00ff88]">
                         <Globe className="w-7 h-7" />
                       </div>
-                      <div className="space-y-2 w-full">
-                        <span className="text-[10px] font-mono font-black uppercase text-emerald-400 tracking-wider block">
-                          Verification Raw URL Link
-                        </span>
+                      <div className="space-y-3 w-full">
                         <a
                           href={selectedPreviewProof.external_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block text-xs font-mono text-[#00ff88] bg-black/80 border border-zinc-800 p-3 rounded-xl break-all hover:bg-zinc-900 hover:border-emerald-500/40 transition-all underline select-all"
+                          className="block text-sm text-[#00ff88] bg-black/80 border border-zinc-800 p-3 rounded-xl break-all hover:bg-zinc-900 transition-all underline"
                         >
                           {selectedPreviewProof.external_url}
                         </a>
@@ -2003,9 +1960,9 @@ export default function MyGoals() {
                         href={selectedPreviewProof.external_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-6 py-3 bg-[#00ff88] text-black font-mono font-black text-xs uppercase rounded-xl flex items-center gap-2 hover:bg-[#33ff99] transition-all hover:scale-105 shadow-lg shadow-emerald-950/50"
+                        className="px-5 py-2.5 bg-[#00ff88] text-black text-sm font-semibold rounded-xl flex items-center gap-2 hover:bg-[#33ff99] transition-all"
                       >
-                        <ExternalLink className="w-4 h-4" /> Open Raw Link in New Tab
+                        <ExternalLink className="w-4 h-4" /> Open link
                       </a>
                     </div>
                   ) : (
@@ -2048,9 +2005,9 @@ export default function MyGoals() {
                           <a 
                             href={selectedPreviewProof.external_url} 
                             download={selectedPreviewProof.file_name || 'proof-file'}
-                            className="px-5 py-2.5 bg-[#00ff88] text-black font-mono font-bold text-xs uppercase rounded-xl flex items-center gap-1.5 hover:bg-[#33ff99] transition-all hover:scale-105"
+                            className="px-5 py-2.5 bg-[#00ff88] text-black text-sm font-semibold rounded-xl flex items-center gap-1.5 hover:bg-[#33ff99] transition-all"
                           >
-                            <Download className="w-4 h-4" /> Download File
+                            <Download className="w-4 h-4" /> Download
                           </a>
                         </div>
                       )}
@@ -2058,14 +2015,14 @@ export default function MyGoals() {
                   )}
                 </>
               ) : (
-                <div className="text-center py-12 text-zinc-500 uppercase font-mono text-xs">
-                  No preview available for this file format.
+                <div className="text-center py-12 text-zinc-500 text-sm">
+                  No preview available.
                 </div>
               )}
             </div>
 
             {selectedPreviewProof.note && (
-              <div className="p-4 border-t border-zinc-900 bg-zinc-950/40 text-xs text-zinc-400 font-mono italic">
+              <div className="p-4 border-t border-zinc-900 bg-zinc-950/40 text-sm text-zinc-400 font-sans">
                 {selectedPreviewProof.note}
               </div>
             )}
@@ -2083,8 +2040,8 @@ export default function MyGoals() {
             <div className="flex justify-between items-center pb-2 border-b border-zinc-900 bg-zinc-950/20 -mx-6 -mt-6 p-6">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[#00ff88]" />
-                <h3 className="text-sm font-display font-black text-white uppercase tracking-tight">
-                  Upload a proof to move your progress
+                <h3 className="text-sm font-semibold text-white">
+                  Upload proof
                 </h3>
               </div>
               <button onClick={() => setShowProgressProofModal(false)} className="text-zinc-500 hover:text-white transition-colors">
@@ -2093,57 +2050,42 @@ export default function MyGoals() {
             </div>
 
             <div className="space-y-1">
-              <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wide">Goal Title</p>
-              <h4 className="goal-title text-xs text-[#00ff88]">{progressProofGoal.title}</h4>
-              <p className="text-xs text-zinc-400">
-                You are advancing progress to <span className="font-bold text-white">{progressProofTargetPct}%</span>.
+              <h4 className="goal-title text-sm text-[#00ff88]">{progressProofGoal.title}</h4>
+              <p className="text-sm text-zinc-400">
+                Moving progress to <span className="font-medium text-white">{progressProofTargetPct}%</span>
               </p>
             </div>
 
-            {/* Error notice within modal */}
             {progressProofError && (
-              <div className="normal-case">
-                {renderError(progressProofError, () => setProgressProofError(''))}
-              </div>
+              <div>{renderNotice(progressProofError, () => setProgressProofError(''))}</div>
             )}
 
-            {/* Tabs to switch Upload file vs Link */}
             <div className="grid grid-cols-2 gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-900">
               <button
                 type="button"
                 onClick={() => { setProofModalTab('upload'); setProgressProofError(''); }}
-                className={`py-1.5 text-[10px] font-display font-bold uppercase rounded-md transition-all ${
+                className={`py-1.5 text-sm font-medium rounded-md transition-all ${
                   proofModalTab === 'upload' ? 'bg-zinc-900 text-white shadow-sm' : 'text-zinc-400 hover:text-white'
                 }`}
               >
-                Upload File
+                Upload file
               </button>
               <button
                 type="button"
                 onClick={() => { setProofModalTab('link'); setProgressProofError(''); }}
-                className={`py-1.5 text-[10px] font-display font-bold uppercase rounded-md transition-all ${
+                className={`py-1.5 text-sm font-medium rounded-md transition-all ${
                   proofModalTab === 'link' ? 'bg-zinc-900 text-white shadow-sm' : 'text-zinc-400 hover:text-white'
                 }`}
               >
-                Attach Link
+                Paste link
               </button>
             </div>
 
-            {/* Modal Content depending on Tab */}
             {proofModalTab === 'upload' ? (
               <div className="space-y-3">
-                <div className="bg-zinc-900/90 border border-zinc-800 rounded-xl p-3 text-[10px] space-y-1">
-                  <p className="text-[#00ff88] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5">
-                    <Info className="w-3.5 h-3.5 text-[#00ff88]" /> Upload File Limits
-                  </p>
-                  <ul className="text-zinc-300 space-y-1 pl-4 list-disc font-sans text-[11px] leading-snug">
-                    <li><strong className="text-white">Images (JPG, PNG, WEBP):</strong> Up to <strong>5 MB</strong> max size.</li>
-                    <li><strong className="text-white">PDFs & Videos (MP4, MOV):</strong> Up to <strong>500 KB</strong> direct upload limit.</li>
-                    <li><strong className="text-white">For larger files:</strong> Switch to the <strong>"Attach Link"</strong> tab above to attach Google Drive, Loom, YouTube, or Figma links.</li>
-                  </ul>
-                </div>
+                <p className="text-xs text-zinc-400">Images up to 5 MB. Use Paste link for larger files.</p>
 
-                <label className="block text-[10px] font-mono text-zinc-400 uppercase">Select or Drag file</label>
+                <label className="block text-sm text-zinc-400">File</label>
                 
                 {!progressProofFile ? (
                   <div
@@ -2169,8 +2111,8 @@ export default function MyGoals() {
                       className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                     />
                     <UploadCloud className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-                    <span className="block text-[10px] font-mono text-zinc-400 uppercase font-black">Drag or Browse</span>
-                    <span className="block text-[8px] font-mono text-zinc-500 uppercase mt-1">Images auto-compressed • For large files/PDFs/Videos use Attach Link</span>
+                    <span className="block text-sm text-zinc-400">Drag or browse</span>
+                    <span className="block text-xs text-zinc-500 mt-1">JPG, PNG, MP4, PDF</span>
                   </div>
                 ) : (
                   <div className="bg-zinc-950 border border-zinc-850 rounded-xl p-4 flex items-center justify-between gap-3 animate-in fade-in">
@@ -2184,7 +2126,7 @@ export default function MyGoals() {
                     <button
                       type="button"
                       onClick={() => { setProgressProofFile(null); setProgressProofFileName(''); }}
-                      className="text-[9px] font-mono text-red-400 hover:underline uppercase"
+                      className="text-xs text-red-400 hover:underline"
                     >
                       Remove
                     </button>
@@ -2194,38 +2136,37 @@ export default function MyGoals() {
             ) : (
               <div className="space-y-3 animate-in fade-in">
                 <div>
-                  <label className="block text-[10px] font-mono text-zinc-400 uppercase mb-1">External Link URL</label>
+                  <label className="block text-sm text-zinc-400 mb-1">Link URL</label>
                   <input
                     type="url"
                     required
-                    placeholder="https://github.com/... or https://drive.google.com/..."
+                    placeholder="https://drive.google.com/..."
                     value={progressProofExternalUrl}
                     onChange={(e) => setProgressProofExternalUrl(e.target.value)}
-                    className="bg-zinc-900 border border-zinc-850 text-white text-xs rounded-lg p-2.5 w-full focus:outline-none"
+                    className="bg-zinc-900 border border-zinc-850 text-white text-sm rounded-lg p-2.5 w-full focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-mono text-zinc-400 uppercase mb-1">Reference Title / Name</label>
+                  <label className="block text-sm text-zinc-400 mb-1">Label (optional)</label>
                   <input
                     type="text"
-                    placeholder="e.g. GitHub Pull Request #14"
+                    placeholder="e.g. Loom recording"
                     value={progressProofFileName}
                     onChange={(e) => setProgressProofFileName(e.target.value)}
-                    className="bg-zinc-900 border border-zinc-850 text-white text-xs rounded-lg p-2.5 w-full focus:outline-none"
+                    className="bg-zinc-900 border border-zinc-850 text-white text-sm rounded-lg p-2.5 w-full focus:outline-none"
                   />
                 </div>
               </div>
             )}
 
-            {/* Common Note/Comment */}
             <div>
-              <label className="block text-[10px] font-mono text-zinc-400 uppercase mb-1">Comment / Note</label>
+              <label className="block text-sm text-zinc-400 mb-1">Note (optional)</label>
               <textarea
                 rows={2}
-                placeholder="What did you work on for this step?"
+                placeholder="What did you complete?"
                 value={progressProofNote}
                 onChange={(e) => setProgressProofNote(e.target.value)}
-                className="bg-zinc-900 border border-zinc-850 text-white text-xs rounded-lg p-2.5 w-full focus:outline-none"
+                className="bg-zinc-900 border border-zinc-850 text-white text-sm rounded-lg p-2.5 w-full focus:outline-none"
               />
             </div>
 
@@ -2233,7 +2174,7 @@ export default function MyGoals() {
               <button
                 type="button"
                 onClick={() => setShowProgressProofModal(false)}
-                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-850 text-white text-xs font-display font-bold uppercase rounded-lg border border-zinc-800 transition-colors"
+                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-850 text-white text-sm rounded-lg border border-zinc-800 transition-colors"
               >
                 Cancel
               </button>
@@ -2241,9 +2182,9 @@ export default function MyGoals() {
                 type="button"
                 onClick={() => handleProgressProofSubmit()}
                 disabled={progressProofLoading}
-                className="px-4 py-2 bg-[#00ff88] hover:bg-[#33ff99] disabled:bg-zinc-800 disabled:text-zinc-500 text-black text-xs font-display font-black uppercase rounded-lg transition-all flex items-center gap-1.5"
+                className="px-4 py-2 bg-[#00ff88] hover:bg-[#33ff99] disabled:bg-zinc-800 disabled:text-zinc-500 text-black text-sm font-semibold rounded-lg transition-all"
               >
-                {progressProofLoading ? 'Uploading...' : `Verify & Advance to ${progressProofTargetPct}%`}
+                {progressProofLoading ? 'Saving...' : `Save & move to ${progressProofTargetPct}%`}
               </button>
             </div>
           </div>
@@ -2257,29 +2198,27 @@ export default function MyGoals() {
           <div className="bg-[#0e0e14] border border-red-950/30 rounded-2xl max-w-sm w-full overflow-hidden shadow-2xl relative z-10 flex flex-col font-sans p-6 space-y-4">
             <div className="flex items-center gap-2 text-red-400">
               <Trash2 className="w-5 h-5" />
-              <h3 className="font-display font-black text-xs uppercase tracking-wider text-white">
-                Delete Proof?
-              </h3>
+              <h3 className="text-sm font-semibold text-white">Delete proof?</h3>
             </div>
             
-            <p className="text-[11px] text-zinc-400 leading-relaxed font-mono">
-              Are you sure you want to delete this proof of work? This action cannot be undone.
+            <p className="text-sm text-zinc-400 leading-relaxed">
+              This cannot be undone.
             </p>
 
             <div className="flex justify-end gap-2.5 pt-2">
               <button
                 type="button"
                 onClick={() => setProofToDelete(null)}
-                className="px-3.5 py-2 bg-zinc-900 hover:bg-zinc-850 text-white text-[10px] font-display font-bold uppercase rounded-lg border border-zinc-800 transition-colors"
+                className="px-3.5 py-2 bg-zinc-900 hover:bg-zinc-850 text-white text-sm rounded-lg border border-zinc-800 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => executeDeleteProof(proofToDelete)}
-                className="px-3.5 py-2 bg-red-950/60 hover:bg-red-900/40 text-red-400 text-[10px] font-display font-black uppercase rounded-lg border border-red-900/30 transition-all cursor-pointer"
+                className="px-3.5 py-2 bg-red-950/60 hover:bg-red-900/40 text-red-400 text-sm rounded-lg border border-red-900/30 transition-all cursor-pointer"
               >
-                Confirm Delete
+                Delete
               </button>
             </div>
           </div>
@@ -2293,29 +2232,27 @@ export default function MyGoals() {
           <div className="bg-[#0e0e14] border border-red-950/30 rounded-2xl max-w-sm w-full overflow-hidden shadow-2xl relative z-10 flex flex-col font-sans p-6 space-y-4">
             <div className="flex items-center gap-2 text-red-400">
               <Trash2 className="w-5 h-5" />
-              <h3 className="font-display font-black text-xs uppercase tracking-wider text-white">
-                Delete Goal?
-              </h3>
+              <h3 className="text-sm font-semibold text-white">Delete goal?</h3>
             </div>
             
-            <p className="text-[11px] text-zinc-400 leading-relaxed font-mono">
-              Are you sure you want to delete this goal and all of its associated verification proofs? This action is permanent.
+            <p className="text-sm text-zinc-400 leading-relaxed">
+              This removes the goal and all proofs. This cannot be undone.
             </p>
 
             <div className="flex justify-end gap-2.5 pt-2">
               <button
                 type="button"
                 onClick={() => setGoalToDelete(null)}
-                className="px-3.5 py-2 bg-zinc-900 hover:bg-zinc-850 text-white text-[10px] font-display font-bold uppercase rounded-lg border border-zinc-800 transition-colors"
+                className="px-3.5 py-2 bg-zinc-900 hover:bg-zinc-850 text-white text-sm rounded-lg border border-zinc-800 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => executeDeleteGoal(goalToDelete)}
-                className="px-3.5 py-2 bg-red-950/60 hover:bg-red-900/40 text-red-400 text-[10px] font-display font-black uppercase rounded-lg border border-red-900/30 transition-all cursor-pointer"
+                className="px-3.5 py-2 bg-red-950/60 hover:bg-red-900/40 text-red-400 text-sm rounded-lg border border-red-900/30 transition-all cursor-pointer"
               >
-                Confirm Delete
+                Delete
               </button>
             </div>
           </div>
