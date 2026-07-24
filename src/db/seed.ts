@@ -154,6 +154,15 @@ async function runSeed() {
       managerEmail: 'anjali@learnapp.com',
     });
 
+    await createOrUpdateUser({
+      fullName: 'Deepak Ch.',
+      email: 'deepak@learnapp.com',
+      jobTitle: '',
+      department: 'Zerodha Online',
+      role: 'employee',
+      managerEmail: 'anjali@learnapp.com',
+    });
+
     // Varsity Team
     const apoorvSId = await createOrUpdateUser({
       fullName: 'Apoorv Suman',

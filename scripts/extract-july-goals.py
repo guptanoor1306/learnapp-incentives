@@ -26,7 +26,7 @@ SEED_NAMES = {
     "MD Wasim", "Harish Rawat", "Abhishek Sharma", "Divyanshu Mishra", "Rishabh Bangwal", "Nishita Gupta",
     "Sahil Mathur", "Shuchita Kumar", "Pulkit Lalwani", "Piyush Kumar", "Tanya Khanna", "Anish Mohan",
     "Khushi Narula", "Rohit Sondhi", "Satyam Gupta", "Siya Khanna", "Vandit Rai", "Mod Abid", "Mudhit Mehra",
-    "Aastha Gupta",
+    "Aastha Gupta", "Deepak Ch.",
 }
 
 ALIASES = {
@@ -48,6 +48,7 @@ ALIASES = {
     "akriti": "Akriti Singh", "ajay": "Ajay Singh Rawat", "wasim": "MD Wasim",
     "deepak": "Deepak Kumar", "bratish": "Bratish Kanti Banerjee", "aastha": "Aastha Gupta",
     "abhishek rathore": "Abhishek Rathore",
+    "deepak ch": "Deepak Ch.",
 }
 
 GRAPHICS_SHEET = "xl/worksheets/sheet1.xml"
@@ -123,8 +124,10 @@ def detect_layout(row: list[str]) -> str:
 
 def resolve_name(raw: str, sheet_id: str) -> str | None:
     key = norm(raw).lower().replace("(self)", "").strip()
-    if not key or key == "deepak ch":
+    if not key:
         return None
+    if key == "deepak ch":
+        return "Deepak Ch."
     if key == "piyush" and sheet_id == GRAPHICS_SHEET:
         return "Piyush Vaid"
     if key == "aman" and sheet_id == GRAPHICS_SHEET:

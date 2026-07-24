@@ -68,6 +68,24 @@ const compressImage = (base64Str: string): Promise<string> => {
   });
 };
 
+const LOGIN_ID_KEY = 'aurora_logged_in_id';
+const LOGIN_EMAIL_KEY = 'aurora_logged_in_email';
+
+function resolveSessionProfile(profiles: Profile[]): Profile | null {
+  const storedId = localStorage.getItem(LOGIN_ID_KEY);
+  if (storedId) {
+    const byId = profiles.find((p) => p.id === storedId);
+    if (byId) return byId;
+  }
+
+  const storedEmail = localStorage.getItem(LOGIN_EMAIL_KEY);
+  if (storedEmail) {
+    return profiles.find((p) => p.email.toLowerCase() === storedEmail.toLowerCase()) || null;
+  }
+
+  return null;
+}
+
 export default function MyGoals() {
   const [profilesList, setProfilesList] = useState<Profile[]>([]);
   const [cycles, setCycles] = useState<IncentiveCycle[]>([]);
@@ -88,7 +106,7 @@ export default function MyGoals() {
   // Database-backed cheers & login state
   const [allCheers, setAllCheers] = useState<any[]>([]);
   const [loggedInId, setLoggedInId] = useState<string>(() => {
-    return localStorage.getItem('aurora_logged_in_id') || '';
+    return localStorage.getItem(LOGIN_ID_KEY) || '';
   });
   const [loginEmail, setLoginEmail] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -98,6 +116,8 @@ export default function MyGoals() {
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [goalTitle, setGoalTitle] = useState('');
   const [goalDescription, setGoalDescription] = useState('');
+  const [showTitleError, setShowTitleError] = useState(false);
+  const [showDescriptionError, setShowDescriptionError] = useState(false);
   const [goalType, setGoalType] = useState<'personal' | 'business'>('personal');
   const [formSubmitLoading, setFormSubmitLoading] = useState(false);
 
@@ -186,16 +206,26 @@ export default function MyGoals() {
     }
   }, [selectedCycleId, profilesList]);
 
-  // Synchronize loggedInId and activeEmployeeId
+  // Re-bind session after DB re-seeds (profile IDs change; email stays stable)
   useEffect(() => {
-    if (profilesList.length > 0) {
-      if (loggedInId) {
-        setActiveEmployeeId(loggedInId);
-      } else {
-        setActiveEmployeeId('');
-      }
+    if (profilesList.length === 0) return;
+
+    const sessionProfile = resolveSessionProfile(profilesList);
+    if (sessionProfile) {
+      setLoggedInId(sessionProfile.id);
+      setActiveEmployeeId(sessionProfile.id);
+      localStorage.setItem(LOGIN_ID_KEY, sessionProfile.id);
+      localStorage.setItem(LOGIN_EMAIL_KEY, sessionProfile.email.toLowerCase());
+      return;
     }
-  }, [profilesList, loggedInId]);
+
+    if (loggedInId || localStorage.getItem(LOGIN_EMAIL_KEY)) {
+      setLoggedInId('');
+      setActiveEmployeeId('');
+      localStorage.removeItem(LOGIN_ID_KEY);
+      localStorage.removeItem(LOGIN_EMAIL_KEY);
+    }
+  }, [profilesList]);
 
   const fetchCheers = async () => {
     try {
@@ -292,22 +322,26 @@ export default function MyGoals() {
     }
   };
 
-  const handleOpenCreateForm = (type: 'personal' | 'business') => {
-    if (activeEmployeeId !== loggedInId) {
-      setErrorMsg("You cannot create goals for another teammate.");
+  const handleOpenCreateForm = (type: 'personal' | 'business', owner?: Profile | null) => {
+    const profile = owner ?? resolveSessionProfile(profilesList);
+    if (!profile) {
+      setErrorMsg('Please sign in to create goals.');
       return;
     }
     setGoalType(type);
     setEditingGoal(null);
     setGoalTitle('');
     setGoalDescription('');
+    setShowTitleError(false);
+    setShowDescriptionError(false);
     setErrorMsg('');
     setSuccessMsg('');
     setShowGoalForm(true);
   };
 
-  const handleOpenEditForm = (goal: Goal) => {
-    if (goal.employee_id !== loggedInId) {
+  const handleOpenEditForm = (goal: Goal, owner?: Profile | null) => {
+    const profile = owner ?? resolveSessionProfile(profilesList);
+    if (!profile || goal.employee_id !== profile.id) {
       setErrorMsg("You cannot edit another teammate's goal.");
       return;
     }
@@ -315,14 +349,30 @@ export default function MyGoals() {
     setGoalType(goal.goal_type as 'personal' | 'business');
     setGoalTitle(goal.title);
     setGoalDescription(goal.description);
+    setShowTitleError(false);
+    setShowDescriptionError(false);
     setErrorMsg('');
     setSuccessMsg('');
     setShowGoalForm(true);
   };
 
   const handleSaveGoal = async () => {
-    if (!goalTitle.trim() || !goalDescription.trim()) {
-      setErrorMsg('Please complete the title and description.');
+    const title = goalTitle.trim();
+    const description = goalDescription.trim();
+    const missingTitle = !title;
+    const missingDescription = !description;
+
+    setShowTitleError(missingTitle);
+    setShowDescriptionError(missingDescription);
+
+    if (missingTitle || missingDescription) {
+      setErrorMsg(missingDescription && title ? 'Add description' : 'Please complete the title and description.');
+      return;
+    }
+
+    const sessionProfile = resolveSessionProfile(profilesList);
+    if (!sessionProfile) {
+      setErrorMsg('Please sign in to save goals.');
       return;
     }
 
@@ -342,11 +392,11 @@ export default function MyGoals() {
       });
 
       const goalData = {
-        employee_id: activeEmployeeId,
+        employee_id: sessionProfile.id,
         cycle_id: selectedCycleId,
         goal_type: goalType,
-        title: goalTitle.trim(),
-        description: goalDescription.trim(),
+        title,
+        description,
         success_criteria: serializedSuccess,
         beyond_bau_explanation: null,
         target_date: targetEndDate,
@@ -393,7 +443,8 @@ export default function MyGoals() {
 
   const executeDeleteGoal = async (goalId: string) => {
     const targetGoal = allGoals.find(g => g.id === goalId);
-    if (targetGoal && targetGoal.employee_id !== loggedInId) {
+    const sessionProfile = resolveSessionProfile(profilesList);
+    if (targetGoal && sessionProfile && targetGoal.employee_id !== sessionProfile.id) {
       setErrorMsg("You cannot delete another teammate's goal.");
       return;
     }
@@ -445,8 +496,9 @@ export default function MyGoals() {
     }
   };
 
-  const handleSmileyClick = async (goal: Goal, smileyIndex: number) => {
-    if (goal.employee_id !== loggedInId) {
+  const handleSmileyClick = async (goal: Goal, smileyIndex: number, owner?: Profile | null) => {
+    const profile = owner ?? resolveSessionProfile(profilesList);
+    if (!profile || goal.employee_id !== profile.id) {
       setErrorMsg("You cannot edit another teammate's goal.");
       return;
     }
@@ -563,12 +615,15 @@ export default function MyGoals() {
         finalUrl = base64Data;
       }
 
+      const uploaderId = resolveSessionProfile(profilesList)?.id;
+      if (!uploaderId) throw new Error('Please sign in to upload proofs.');
+
       // 1. Insert proof
       const { error: proofErr } = await supabase
         .from('proofs')
         .insert({
           goal_id: progressProofGoal.id,
-          uploaded_by: loggedInId,
+          uploaded_by: uploaderId,
           external_url: finalUrl,
           file_name: finalFileName,
           file_type: finalFileType,
@@ -628,11 +683,14 @@ export default function MyGoals() {
     setProofSubmitLoading(true);
     setErrorMsg('');
     try {
+      const uploaderId = resolveSessionProfile(profilesList)?.id;
+      if (!uploaderId) throw new Error('Please sign in to upload proofs.');
+
       const { error } = await supabase
         .from('proofs')
         .insert({
           goal_id: uploadingProofForGoalId,
-          uploaded_by: activeEmployeeId,
+          uploaded_by: uploaderId,
           external_url: proofExternalUrl.trim() || null,
           file_name: proofFileName.trim() || 'Verification file',
           note: proofNote.trim() || 'Uploaded development work verification.',
@@ -696,11 +754,14 @@ export default function MyGoals() {
       }
 
       try {
+        const uploaderId = resolveSessionProfile(profilesList)?.id;
+        if (!uploaderId) throw new Error('Please sign in to upload proofs.');
+
         const { error } = await supabase
           .from('proofs')
           .insert({
             goal_id: goalId,
-            uploaded_by: activeEmployeeId,
+            uploaded_by: uploaderId,
             external_url: finalData,
             file_name: file.name,
             file_type: file.type,
@@ -727,14 +788,15 @@ export default function MyGoals() {
   };
 
   const handleCheerEmployee = async (receiverId: string) => {
-    if (!loggedInId) {
+    const sessionProfile = resolveSessionProfile(profilesList);
+    if (!sessionProfile) {
       setErrorMsg('Please sign in with your email first to cheer teammates.');
       return;
     }
 
     try {
       // Find if we already cheered this person
-      const existingCheer = allCheers.find(c => c.giver_id === loggedInId && c.receiver_id === receiverId);
+      const existingCheer = allCheers.find(c => c.giver_id === sessionProfile.id && c.receiver_id === receiverId);
 
       if (existingCheer) {
         // Toggle off - delete from DB
@@ -749,7 +811,7 @@ export default function MyGoals() {
         const { error } = await supabase
           .from('cheers')
           .insert({
-            giver_id: loggedInId,
+            giver_id: sessionProfile.id,
             receiver_id: receiverId,
             created_at: new Date().toISOString()
           });
@@ -773,7 +835,8 @@ export default function MyGoals() {
     if (found) {
       setLoggedInId(found.id);
       setActiveEmployeeId(found.id);
-      localStorage.setItem('aurora_logged_in_id', found.id);
+      localStorage.setItem(LOGIN_ID_KEY, found.id);
+      localStorage.setItem(LOGIN_EMAIL_KEY, found.email.toLowerCase());
       setSuccessMsg(`Welcome back, ${found.full_name}!`);
       setLoginEmail('');
       setLoginError('');
@@ -785,17 +848,17 @@ export default function MyGoals() {
   const handleLogout = () => {
     setLoggedInId('');
     setActiveEmployeeId('');
-    localStorage.removeItem('aurora_logged_in_id');
+    localStorage.removeItem(LOGIN_ID_KEY);
+    localStorage.removeItem(LOGIN_EMAIL_KEY);
     setSuccessMsg('Logged out successfully.');
   };
 
   const canDeleteProof = (proof: Proof, goalEmployeeId?: string) => {
-    if (!loggedInId) return false;
-    const loggedInProfile = profilesList.find(p => p.id === loggedInId);
-    if (loggedInProfile?.role === 'admin') return true;
-    if (proof.uploaded_by === loggedInId) return true;
-    if (goalEmployeeId === loggedInId) return true;
-    if (activeEmployeeId === loggedInId) return true;
+    const sessionProfile = resolveSessionProfile(profilesList);
+    if (!sessionProfile) return false;
+    if (sessionProfile.role === 'admin') return true;
+    if (proof.uploaded_by === sessionProfile.id) return true;
+    if (goalEmployeeId === sessionProfile.id) return true;
     return false;
   };
 
@@ -889,10 +952,12 @@ export default function MyGoals() {
     return b.totalStamps - a.totalStamps;
   });
 
-  const loggedInProfile = profilesList.find(p => p.id === loggedInId);
-  const activeEmployee = profilesList.find(p => p.id === activeEmployeeId);
-  const activeEmployeeGoals = allGoals.filter(g => g.employee_id === activeEmployeeId);
-  const canEditGoals = activeEmployeeId === loggedInId;
+  const loggedInProfile = resolveSessionProfile(profilesList);
+  const sessionUserId = loggedInProfile?.id || '';
+  const workspaceGoals = sessionUserId
+    ? allGoals.filter((g) => g.employee_id === sessionUserId)
+    : [];
+  const canEditGoals = !!loggedInProfile;
 
   if (loading && profilesList.length === 0) {
     return (
@@ -905,7 +970,7 @@ export default function MyGoals() {
     );
   }
 
-  if (!loggedInId) {
+  if (!loggedInProfile) {
     return (
       <div className="min-h-screen bg-[#040406] text-[#ececf3] flex items-center justify-center p-4 relative font-sans">
         {/* Soft Elegant Blur Ambient Orbs */}
@@ -1051,8 +1116,9 @@ export default function MyGoals() {
           <button
             onClick={() => {
               setViewMode('workspace');
-              if (loggedInId) {
-                setActiveEmployeeId(loggedInId);
+              if (loggedInProfile) {
+                setActiveEmployeeId(loggedInProfile.id);
+                setLoggedInId(loggedInProfile.id);
               }
             }}
             className={`px-4 py-2 rounded-lg font-display font-bold text-xs uppercase tracking-wide transition-all flex items-center gap-2 ${
@@ -1183,7 +1249,7 @@ export default function MyGoals() {
                               <span className="font-display font-black text-xs text-white uppercase tracking-tight group-hover:text-emerald-400 transition-colors">
                                 {employee.full_name}
                               </span>
-                              {employee.id === activeEmployeeId && (
+                              {loggedInProfile && employee.id === loggedInProfile.id && (
                                 <span className="text-[7px] px-1 bg-pink-500/20 text-pink-400 font-mono font-bold rounded uppercase tracking-wider">You</span>
                               )}
                             </div>
@@ -1284,14 +1350,14 @@ export default function MyGoals() {
                                  handleCheerEmployee(employee.id);
                                }}
                                className={`px-2.5 py-1.5 rounded-lg border text-orange-400 hover:text-orange-300 transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer ${
-                                 allCheers.some(c => c.giver_id === loggedInId && c.receiver_id === employee.id)
+                                 allCheers.some(c => c.giver_id === sessionUserId && c.receiver_id === employee.id)
                                    ? 'bg-orange-500/25 border-orange-500/60 shadow-[0_0_10px_rgba(249,115,22,0.15)]'
                                    : 'bg-orange-500/10 hover:bg-orange-500/20 border-orange-500/20 hover:border-orange-500/40'
                                }`}
-                               title={allCheers.some(c => c.giver_id === loggedInId && c.receiver_id === employee.id) ? "Remove Flame" : "Cheer Teammate!"}
+                               title={allCheers.some(c => c.giver_id === sessionUserId && c.receiver_id === employee.id) ? "Remove Flame" : "Cheer Teammate!"}
                              >
                                <Flame className={`w-3.5 h-3.5 transition-transform ${
-                                 allCheers.some(c => c.giver_id === loggedInId && c.receiver_id === employee.id)
+                                 allCheers.some(c => c.giver_id === sessionUserId && c.receiver_id === employee.id)
                                    ? 'fill-orange-500 text-orange-400 scale-110'
                                    : 'fill-orange-500/20 text-orange-400'
                                }`} />
@@ -1482,46 +1548,38 @@ export default function MyGoals() {
         {/* ------------------------------------------------------------- */}
         {/* VIEW 2: PERSONAL INTERACTIVE WORKSPACE                        */}
         {/* ------------------------------------------------------------- */}
-        {viewMode === 'workspace' && activeEmployee && (
+        {viewMode === 'workspace' && loggedInProfile && (
           <div className="space-y-6 animate-in fade-in duration-200">
               
-              {/* Teammate Workspace Header Card */}
+              {/* My Workspace Header */}
               <div className="bg-[#0e0e14] border border-zinc-900 p-6 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 shadow-xl">
                 <div>
                   <span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-[9px] font-mono font-black text-zinc-400 uppercase tracking-wide">
-                    {activeEmployee.department}
+                    {loggedInProfile.department}
                   </span>
-                  <h2 className="text-xl font-display font-black text-white mt-1.5 uppercase">{activeEmployee.full_name}</h2>
+                  <h2 className="text-xl font-display font-black text-white mt-1.5 uppercase">{loggedInProfile.full_name}</h2>
                 </div>
 
                 <div className="flex gap-2 w-full sm:w-auto justify-end">
-                  {canEditGoals ? (
-                    <>
-                      <button
-                        onClick={() => handleOpenCreateForm('personal')}
-                        className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-850 text-zinc-300 font-display font-bold text-xs uppercase rounded-lg border border-zinc-800 transition-colors cursor-pointer"
-                      >
-                        + Add Personal Goal
-                      </button>
-                      <button
-                        onClick={() => handleOpenCreateForm('business')}
-                        className="px-3 py-1.5 bg-emerald-950 hover:bg-emerald-900 text-[#00ff88] font-display font-bold text-xs uppercase rounded-lg border border-emerald-900/30 transition-colors cursor-pointer"
-                      >
-                        + Add Business Goal
-                      </button>
-                    </>
-                  ) : (
-                    <span className="px-3 py-1.5 bg-zinc-900/80 text-zinc-400 font-mono text-[10px] uppercase rounded-lg border border-zinc-800 flex items-center gap-1.5 select-none">
-                      <Lock className="w-3 h-3 text-amber-400" /> Inspecting Teammate Goals (Read-Only)
-                    </span>
-                  )}
+                  <button
+                    onClick={() => handleOpenCreateForm('personal', loggedInProfile)}
+                    className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-850 text-zinc-300 font-display font-bold text-xs uppercase rounded-lg border border-zinc-800 transition-colors cursor-pointer"
+                  >
+                    + Add Personal Goal
+                  </button>
+                  <button
+                    onClick={() => handleOpenCreateForm('business', loggedInProfile)}
+                    className="px-3 py-1.5 bg-emerald-950 hover:bg-emerald-900 text-[#00ff88] font-display font-bold text-xs uppercase rounded-lg border border-emerald-900/30 transition-colors cursor-pointer"
+                  >
+                    + Add Business Goal
+                  </button>
                 </div>
               </div>
 
-              {/* List of activeEmployee goals */}
-              {activeEmployeeGoals.length > 0 ? (
+              {/* List of my goals */}
+              {workspaceGoals.length > 0 ? (
                 <div className="space-y-4">
-                  {activeEmployeeGoals.map(goal => {
+                  {workspaceGoals.map(goal => {
                     const goalProofs = proofsMap[goal.id] || [];
 
                     return (
@@ -1547,7 +1605,7 @@ export default function MyGoals() {
                           {canEditGoals && (
                             <div className="flex items-center gap-2 shrink-0">
                               <button
-                                onClick={() => handleOpenEditForm(goal)}
+                                onClick={() => handleOpenEditForm(goal, loggedInProfile)}
                                 className="p-1.5 bg-zinc-900 hover:bg-zinc-850 text-white rounded-lg border border-zinc-800 hover:border-zinc-750 cursor-pointer"
                                 title="Edit Goal"
                               >
@@ -1585,7 +1643,7 @@ export default function MyGoals() {
                                   key={sm.label}
                                   type="button"
                                   disabled={!canEditGoals}
-                                  onClick={() => canEditGoals && handleSmileyClick(goal, index)}
+                                  onClick={() => canEditGoals && handleSmileyClick(goal, index, loggedInProfile)}
                                   className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${
                                     isSelected 
                                       ? 'bg-zinc-900 scale-110 border border-[#00ff88]' 
@@ -1797,27 +1855,43 @@ export default function MyGoals() {
             <div className="space-y-4">
               
               <div>
-                <label className="block text-[10px] font-mono text-zinc-400 uppercase mb-1">Goal Title</label>
+                <label className={`block text-[10px] font-mono uppercase mb-1 ${showTitleError ? 'text-red-400' : 'text-zinc-400'}`}>Goal Title</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Weight Loss"
                   value={goalTitle}
-                  onChange={(e) => setGoalTitle(e.target.value)}
-                  className="bg-zinc-900 border border-zinc-850 text-white text-xs rounded-lg p-2.5 w-full focus:outline-none"
+                  onChange={(e) => {
+                    setGoalTitle(e.target.value);
+                    if (e.target.value.trim()) setShowTitleError(false);
+                  }}
+                  className={`bg-zinc-900 text-white text-xs rounded-lg p-2.5 w-full focus:outline-none ${
+                    showTitleError ? 'border border-red-500/70 ring-1 ring-red-500/30' : 'border border-zinc-850'
+                  }`}
                 />
+                {showTitleError && (
+                  <p className="text-[10px] font-mono text-red-400 mt-1">Add a goal title</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-[10px] font-mono text-zinc-400 uppercase mb-1">Description and Scope</label>
+                <label className={`block text-[10px] font-mono uppercase mb-1 ${showDescriptionError ? 'text-red-400' : 'text-zinc-400'}`}>Description and Scope</label>
                 <textarea
                   required
                   rows={3}
                   placeholder="Describe your target outcomes..."
                   value={goalDescription}
-                  onChange={(e) => setGoalDescription(e.target.value)}
-                  className="bg-zinc-900 border border-zinc-850 text-white text-xs rounded-lg p-2.5 w-full focus:outline-none"
+                  onChange={(e) => {
+                    setGoalDescription(e.target.value);
+                    if (e.target.value.trim()) setShowDescriptionError(false);
+                  }}
+                  className={`bg-zinc-900 text-white text-xs rounded-lg p-2.5 w-full focus:outline-none ${
+                    showDescriptionError ? 'border border-red-500/70 ring-1 ring-red-500/30' : 'border border-zinc-850'
+                  }`}
                 />
+                {showDescriptionError && (
+                  <p className="text-[10px] font-mono text-red-400 mt-1">Add description</p>
+                )}
               </div>
 
               <div>
