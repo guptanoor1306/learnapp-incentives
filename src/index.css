@@ -1,0 +1,132 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto:wght@300;400;500;700;900&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Roboto", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Roboto", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #030305; /* Deep Aurora Obsidian */
+  color: #f1f1f5; /* Pure crisp light gray text */
+  letter-spacing: -0.01em;
+}
+
+/* Custom premium scrollbar for Aurora theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #08080c;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e1e2d;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #00ff7f; /* Neon green */
+}
+
+/* Glowing Neon Borders and Shadows */
+.aurora-glow-green {
+  box-shadow: 0 0 20px rgba(0, 255, 127, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-color: rgba(0, 255, 127, 0.3);
+}
+
+.aurora-glow-pink {
+  box-shadow: 0 0 20px rgba(255, 0, 85, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 0, 85, 0.3);
+}
+
+.aurora-glow-orange {
+  box-shadow: 0 0 20px rgba(255, 130, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 130, 0, 0.3);
+}
+
+/* Aurora Backdrop Card effect */
+.aurora-card {
+  position: relative;
+  background: rgba(12, 12, 18, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aurora-card-interactive:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.6),
+    0 0 30px rgba(0, 255, 127, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Text Gradient for Headings */
+.aurora-text-gradient {
+  background: linear-gradient(135deg, #ffffff 30%, #a5a5b5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.aurora-text-green {
+  background: linear-gradient(135deg, #00ff7f 0%, #00d2ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.aurora-text-hot {
+  background: linear-gradient(135deg, #ff0055 0%, #ff7700 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Sporty Neumorphic Buttons */
+.aurora-btn-primary {
+  background: linear-gradient(135deg, #00ff7f 0%, #00b55b 100%);
+  color: #010103;
+  font-weight: 700;
+  box-shadow: 0 4px 20px rgba(0, 255, 127, 0.25);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aurora-btn-primary:hover {
+  background: linear-gradient(135deg, #33ff99 0%, #00ff7f 100%);
+  box-shadow: 0 6px 25px rgba(0, 255, 127, 0.4);
+  transform: scale(1.02);
+}
+
+.aurora-btn-secondary {
+  background: rgba(255, 255, 255, 0.03);
+  color: #f1f1f5;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition: all 0.2s ease;
+}
+
+.aurora-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Input Fields */
+.aurora-input {
+  background: rgba(8, 8, 12, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f1f1f5;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.aurora-input:focus {
+  border-color: #00ff7f;
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.3),
+    0 0 15px rgba(0, 255, 127, 0.2);
+  outline: none;
+}
