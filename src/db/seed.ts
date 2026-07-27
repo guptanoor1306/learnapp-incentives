@@ -578,7 +578,7 @@ async function runSeed() {
     });
 
     const priyanshuKId = await createOrUpdateUser({
-      fullName: 'Piyush Kumar',
+      fullName: 'Priyanshu Kumar',
       email: 'priyanshu.kumar@learnapp.com',
       jobTitle: '',
       department: 'Content 2',

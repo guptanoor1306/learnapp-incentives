@@ -24,7 +24,7 @@ SEED_NAMES = {
     "Shreya Sarawagi", "Vaibhav Singhal", "Bhavya S Menon", "Aman Deep", "Amardeep Singh", "Ashutosh Kaushik",
     "Naveen Tiwari", "Rahul", "Bratish Kanti Banerjee", "Ajay Singh Rawat", "Akriti Singh", "Deepak Kumar",
     "MD Wasim", "Harish Rawat", "Abhishek Sharma", "Divyanshu Mishra", "Rishabh Bangwal", "Nishita Gupta",
-    "Sahil Mathur", "Shuchita Kumar", "Pulkit Lalwani", "Piyush Kumar", "Tanya Khanna", "Anish Mohan",
+    "Sahil Mathur", "Shuchita Kumar", "Pulkit Lalwani", "Priyanshu Kumar", "Tanya Khanna", "Anish Mohan",
     "Khushi Narula", "Rohit Sondhi", "Satyam Gupta", "Siya Khanna", "Vandit Rai", "Mod Abid", "Mudhit Mehra",
     "Aastha Gupta", "Deepak Ch.",
 }
@@ -32,7 +32,7 @@ SEED_NAMES = {
 ALIASES = {
     "vaibhav": "Vaibhav Singhal", "shreya": "Shreya Sarawagi", "aman ghosh": "Aman Ghosh", "aman deep": "Aman Deep",
     "amandeep": "Aman Deep", "mayank": "Mayank Chauhan", "amit": "Amit Joshi", "piyush vaid": "Piyush Vaid",
-    "piyush kumar": "Piyush Kumar", "kumar priyanshu": "Piyush Kumar", "abhishek shukla": "Abhishek Shukla",
+    "piyush kumar": "Priyanshu Kumar", "kumar priyanshu": "Priyanshu Kumar", "priyanshu": "Priyanshu Kumar", "abhishek shukla": "Abhishek Shukla",
     "abhishek sharma": "Abhishek Sharma", "abhishek": "Abhishek Sharma", "pranchal": "Pranchal Chaudhary",
     "raj": "Raj", "rakhi": "Rakhi Dhama", "ishika": "Ishika Badal", "anubha": "Anubha Rathi",
     "chandan": "Chandan Kumar Vishwakarma", "harshita": "Harshita Varshney", "supriya": "Supriya CK",
