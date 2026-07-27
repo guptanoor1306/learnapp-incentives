@@ -1177,11 +1177,11 @@ export default function MyGoals() {
                                 {/* Visual Chart Legend modeled after the uploaded reference */}
                 <div className="flex flex-wrap gap-x-5 gap-y-2 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 select-none">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 bg-emerald-600/70 rounded-sm inline-block border border-emerald-500/30" />
+                    <span className="w-3 h-3 bg-amber-400/80 rounded-sm inline-block border border-amber-300/30" />
                     <span>Business Goals</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 bg-violet-500/70 rounded-sm inline-block border border-violet-400/30" />
+                    <span className="w-3 h-3 bg-orange-700/75 rounded-sm inline-block border border-orange-600/30" />
                     <span>Personal Goals</span>
                   </div>
                 </div>
@@ -1200,7 +1200,7 @@ export default function MyGoals() {
                         onClick={() => setExpandedEmployeeId(isExpanded ? null : employee.id)}
                         className={`group relative grid grid-cols-12 gap-4 items-center p-4 bg-[#0e0e14] hover:bg-[#0e0e14] rounded-xl border ${
                           isExpanded 
-                            ? 'border-emerald-500/40 shadow-[0_0_20px_rgba(0,255,136,0.06)]' 
+                            ? 'border-amber-500/35 shadow-[0_0_20px_rgba(245,158,11,0.06)]' 
                             : 'border-zinc-900 hover:border-zinc-800'
                         } transition-all duration-200 cursor-pointer`}
                       >
@@ -1208,21 +1208,21 @@ export default function MyGoals() {
                         {/* COL 1: Rank & Name */}
                         <div className="col-span-12 md:col-span-3 flex items-center gap-3">
                           <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono font-black text-xs shrink-0 ${
-                            index === 0 ? 'bg-amber-500/90 text-black shadow-md shadow-amber-500/20' :
-                            index === 1 ? 'bg-zinc-300 text-black shadow-md shadow-zinc-300/20' :
-                            index === 2 ? 'bg-amber-700/90 text-white shadow-md shadow-amber-700/20' :
-                            'bg-zinc-900 text-zinc-400 border border-zinc-850'
+                            index === 0 ? 'bg-amber-400 text-black shadow-md shadow-amber-400/20' :
+                            index === 1 ? 'bg-amber-200 text-black shadow-md shadow-amber-200/20' :
+                            index === 2 ? 'bg-orange-700 text-white shadow-md shadow-orange-700/20' :
+                            'bg-zinc-900 text-amber-200/70 border border-amber-900/40'
                           }`}>
                             {index + 1}
                           </div>
                           
                           <div className="truncate">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-sm font-semibold text-white group-hover:text-emerald-400 transition-colors">
+                              <span className="text-sm font-semibold text-white group-hover:text-amber-300 transition-colors">
                                 {formatDisplayLabel(employee.full_name)}
                               </span>
                               {loggedInProfile && employee.id === loggedInProfile.id && (
-                                <span className="text-[7px] px-1 bg-violet-500/20 text-violet-300 font-mono font-bold rounded uppercase tracking-wider">You</span>
+                                <span className="text-[7px] px-1 bg-amber-500/20 text-amber-300 font-mono font-bold rounded uppercase tracking-wider">You</span>
                               )}
                             </div>
                             <span className="text-xs text-zinc-500 font-medium">
@@ -1250,7 +1250,7 @@ export default function MyGoals() {
                               {employee.businessContrib > 0 && (
                                 <div 
                                   style={{ width: `${employee.businessContrib}%` }}
-                                  className="h-full bg-emerald-600/75 relative border-r border-emerald-500/25 min-w-[2px]"
+                                  className="h-full bg-amber-400/75 relative border-r border-amber-300/25 min-w-[2px]"
                                   title={`Business Progress: ${Math.round(employee.bProgress)}% (Contributes ${employee.businessContrib.toFixed(1)}%)`}
                                 />
                               )}
@@ -1259,7 +1259,7 @@ export default function MyGoals() {
                               {employee.personalContrib > 0 && (
                                 <div 
                                   style={{ width: `${employee.personalContrib}%` }}
-                                  className="h-full bg-violet-500/70 relative border-r border-violet-400/25 min-w-[2px]"
+                                  className="h-full bg-orange-700/70 relative border-r border-orange-600/25 min-w-[2px]"
                                   title={`Personal Progress: ${Math.round(employee.pProgress)}% (Contributes ${employee.personalContrib.toFixed(1)}%)`}
                                 />
                               )}
