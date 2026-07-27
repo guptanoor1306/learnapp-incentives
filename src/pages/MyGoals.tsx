@@ -1177,11 +1177,11 @@ export default function MyGoals() {
                                 {/* Visual Chart Legend modeled after the uploaded reference */}
                 <div className="flex flex-wrap gap-x-5 gap-y-2 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 select-none">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 bg-amber-400/80 rounded-sm inline-block border border-amber-300/30" />
+                    <span className="w-3 h-3 bg-gradient-to-tr from-orange-600 to-amber-500 rounded-sm inline-block border border-orange-500/20" />
                     <span>Business Goals</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 bg-orange-700/75 rounded-sm inline-block border border-orange-600/30" />
+                    <span className="w-3 h-3 bg-gradient-to-tr from-fuchsia-600 to-pink-400 rounded-sm inline-block border border-fuchsia-500/20" />
                     <span>Personal Goals</span>
                   </div>
                 </div>
@@ -1250,18 +1250,22 @@ export default function MyGoals() {
                               {employee.businessContrib > 0 && (
                                 <div 
                                   style={{ width: `${employee.businessContrib}%` }}
-                                  className="h-full bg-amber-400/75 relative border-r border-amber-300/25 min-w-[2px]"
+                                  className="h-full bg-gradient-to-r from-orange-600 to-amber-500 relative border-r border-zinc-950/40 min-w-[2px]"
                                   title={`Business Progress: ${Math.round(employee.bProgress)}% (Contributes ${employee.businessContrib.toFixed(1)}%)`}
-                                />
+                                >
+                                  <div className="absolute inset-x-0 top-0 h-1/2 bg-white/10 pointer-events-none" />
+                                </div>
                               )}
 
                               {/* Personal Goals Segment (50%) */}
                               {employee.personalContrib > 0 && (
                                 <div 
                                   style={{ width: `${employee.personalContrib}%` }}
-                                  className="h-full bg-orange-700/70 relative border-r border-orange-600/25 min-w-[2px]"
+                                  className="h-full bg-gradient-to-r from-fuchsia-600 to-pink-400 relative border-r border-[#0e0e14]/40 min-w-[2px]"
                                   title={`Personal Progress: ${Math.round(employee.pProgress)}% (Contributes ${employee.personalContrib.toFixed(1)}%)`}
-                                />
+                                >
+                                  <div className="absolute inset-x-0 top-0 h-1/2 bg-white/10 pointer-events-none" />
+                                </div>
                               )}
                             </div>
 
