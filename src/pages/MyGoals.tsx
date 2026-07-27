@@ -1168,20 +1168,20 @@ export default function MyGoals() {
             </div>
 
             {/* Interactive Legend Bar */}
-            <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-5 space-y-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-1">
                 <div>
                   <h3 className="text-sm font-display font-black text-white uppercase tracking-tight">Active Progress Roadmap</h3>
-                  <p className="text-[10px] font-mono text-zinc-400 uppercase tracking-wide">Hover segments to view categories • Click row to expand goals</p>
+                  <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wide">Hover segments to view categories • Click row to expand goals</p>
                 </div>
                                 {/* Visual Chart Legend modeled after the uploaded reference */}
-                <div className="flex flex-wrap gap-x-5 gap-y-2 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-300 select-none">
+                <div className="flex flex-wrap gap-x-5 gap-y-2 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 select-none">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 bg-orange-400 rounded-sm inline-block border border-orange-300/50 shadow-sm" />
+                    <span className="w-3 h-3 bg-emerald-600/70 rounded-sm inline-block border border-emerald-500/30" />
                     <span>Business Goals</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 bg-fuchsia-400 rounded-sm inline-block border border-fuchsia-300/50 shadow-sm" />
+                    <span className="w-3 h-3 bg-violet-500/70 rounded-sm inline-block border border-violet-400/30" />
                     <span>Personal Goals</span>
                   </div>
                 </div>
@@ -1198,34 +1198,34 @@ export default function MyGoals() {
                     <div key={employee.id} className="space-y-2">
                       <div 
                         onClick={() => setExpandedEmployeeId(isExpanded ? null : employee.id)}
-                        className={`group relative grid grid-cols-12 gap-4 items-center p-4 bg-zinc-900/50 hover:bg-zinc-900/80 rounded-xl border ${
+                        className={`group relative grid grid-cols-12 gap-4 items-center p-4 bg-[#0e0e14] hover:bg-[#0e0e14] rounded-xl border ${
                           isExpanded 
                             ? 'border-emerald-500/40 shadow-[0_0_20px_rgba(0,255,136,0.06)]' 
-                            : 'border-zinc-800 hover:border-zinc-700'
+                            : 'border-zinc-900 hover:border-zinc-800'
                         } transition-all duration-200 cursor-pointer`}
                       >
                         
                         {/* COL 1: Rank & Name */}
                         <div className="col-span-12 md:col-span-3 flex items-center gap-3">
                           <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono font-black text-xs shrink-0 ${
-                            index === 0 ? 'bg-amber-400 text-black shadow-md shadow-amber-400/30' :
-                            index === 1 ? 'bg-zinc-200 text-black shadow-md shadow-zinc-200/20' :
-                            index === 2 ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' :
-                            'bg-zinc-700 text-zinc-100 border border-zinc-600'
+                            index === 0 ? 'bg-amber-500/90 text-black shadow-md shadow-amber-500/20' :
+                            index === 1 ? 'bg-zinc-300 text-black shadow-md shadow-zinc-300/20' :
+                            index === 2 ? 'bg-amber-700/90 text-white shadow-md shadow-amber-700/20' :
+                            'bg-zinc-900 text-zinc-400 border border-zinc-850'
                           }`}>
                             {index + 1}
                           </div>
                           
                           <div className="truncate">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-sm font-semibold text-white group-hover:text-emerald-300 transition-colors">
+                              <span className="text-sm font-semibold text-white group-hover:text-emerald-400 transition-colors">
                                 {formatDisplayLabel(employee.full_name)}
                               </span>
                               {loggedInProfile && employee.id === loggedInProfile.id && (
-                                <span className="text-[7px] px-1 bg-pink-500/30 text-pink-300 font-mono font-bold rounded uppercase tracking-wider">You</span>
+                                <span className="text-[7px] px-1 bg-violet-500/20 text-violet-300 font-mono font-bold rounded uppercase tracking-wider">You</span>
                               )}
                             </div>
-                            <span className="text-xs text-zinc-400 font-medium">
+                            <span className="text-xs text-zinc-500 font-medium">
                               {formatDisplayLabel(employee.department)}
                             </span>
                           </div>
@@ -1233,15 +1233,15 @@ export default function MyGoals() {
 
                         {/* COL 2: Horizontal Stacked Bar Chart */}
                         <div className="col-span-12 md:col-span-6 relative">
-                          <div className="w-full bg-zinc-800 h-8 rounded-lg overflow-hidden border border-zinc-700 relative flex items-center shadow-inner">
+                          <div className="w-full bg-[#07070a] h-8 rounded-lg overflow-hidden border border-zinc-900 relative flex items-center">
                             
                             {/* Vertical alignment grid markings */}
                             <div className="absolute inset-0 flex justify-between pointer-events-none px-[0.5px] z-10">
-                              <div className="w-[1px] h-full border-l border-zinc-600/20" />
-                              <div className="w-[1px] h-full border-l border-zinc-600/40" style={{ left: '25%' }} />
-                              <div className="w-[1px] h-full border-l border-zinc-600/40" style={{ left: '50%' }} />
-                              <div className="w-[1px] h-full border-l border-zinc-600/40" style={{ left: '75%' }} />
-                              <div className="w-[1px] h-full border-l border-zinc-600/20" />
+                              <div className="w-[1px] h-full border-l border-zinc-800/30" />
+                              <div className="w-[1px] h-full border-l border-zinc-800/50" style={{ left: '25%' }} />
+                              <div className="w-[1px] h-full border-l border-zinc-800/50" style={{ left: '50%' }} />
+                              <div className="w-[1px] h-full border-l border-zinc-800/50" style={{ left: '75%' }} />
+                              <div className="w-[1px] h-full border-l border-zinc-800/30" />
                             </div>
 
                              {/* Solid progress segments */}
@@ -1250,7 +1250,7 @@ export default function MyGoals() {
                               {employee.businessContrib > 0 && (
                                 <div 
                                   style={{ width: `${employee.businessContrib}%` }}
-                                  className="h-full bg-orange-400 relative border-r border-orange-300/40 min-w-[2px]"
+                                  className="h-full bg-emerald-600/75 relative border-r border-emerald-500/25 min-w-[2px]"
                                   title={`Business Progress: ${Math.round(employee.bProgress)}% (Contributes ${employee.businessContrib.toFixed(1)}%)`}
                                 />
                               )}
@@ -1259,7 +1259,7 @@ export default function MyGoals() {
                               {employee.personalContrib > 0 && (
                                 <div 
                                   style={{ width: `${employee.personalContrib}%` }}
-                                  className="h-full bg-fuchsia-400 relative border-r border-fuchsia-300/40 min-w-[2px]"
+                                  className="h-full bg-violet-500/70 relative border-r border-violet-400/25 min-w-[2px]"
                                   title={`Personal Progress: ${Math.round(employee.pProgress)}% (Contributes ${employee.personalContrib.toFixed(1)}%)`}
                                 />
                               )}
@@ -1267,14 +1267,14 @@ export default function MyGoals() {
 
                             {/* Progress text overlay */}
                             <div className="absolute right-2 z-20">
-                              <span className="text-[11px] font-mono font-black text-zinc-900 bg-white/95 px-2 py-0.5 rounded shadow-sm">
+                              <span className="text-[10px] font-mono font-bold text-zinc-300 bg-black/70 px-2 py-0.5 rounded border border-zinc-800">
                                 {employee.calculatedProgress}%
                               </span>
                             </div>
 
                             {/* Zero helper */}
                             {employee.calculatedProgress === 0 && (
-                              <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest pl-3">zero progress</span>
+                              <span className="text-[9px] font-mono text-zinc-600 uppercase tracking-widest pl-3">zero progress</span>
                             )}
                           </div>
                         </div>
@@ -1283,7 +1283,7 @@ export default function MyGoals() {
                         <div className="col-span-12 md:col-span-3 flex items-center justify-between gap-3">
                           
                           {/* Unlocks visual card */}
-                          <div className="flex gap-1.5 bg-zinc-800/80 p-1.5 rounded-lg border border-zinc-700 shrink-0">
+                          <div className="flex gap-1.5 bg-[#0e0e14] p-1.5 rounded-lg border border-zinc-900 shrink-0">
                             {SMILEYS.map((sm, smIdx) => {
                               const isUnlocked = (
                                 (smIdx === 0) ||
@@ -1298,8 +1298,8 @@ export default function MyGoals() {
                                   key={sm.label} 
                                   className={`text-sm select-none transition-all duration-300 ${
                                     isUnlocked 
-                                      ? 'opacity-100 scale-110 drop-shadow-[0_0_6px_rgba(255,255,255,0.25)]' 
-                                      : 'opacity-40 grayscale-[30%]'
+                                      ? 'opacity-100 scale-110 drop-shadow-[0_0_5px_rgba(255,255,255,0.15)]' 
+                                      : 'opacity-25 grayscale'
                                   }`}
                                   title={sm.desc}
                                 >
