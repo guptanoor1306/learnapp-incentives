@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { 
   Flame, Plus, Trash2, Eye, Edit3, X, Sparkles, Send, Compass, Lock, Link as LinkIcon, Upload, ExternalLink, RefreshCw, Search, FileText, Video, Image as ImageIcon, UploadCloud, Download, LogOut, Filter, Users, Globe
@@ -7,6 +7,10 @@ import { Profile, IncentiveCycle, Goal, Proof } from '../types';
 import { 
   DEPARTMENTS, SMILEYS, getSmileyForPercentage 
 } from '../data';
+
+const PROOF_SUMMARY_SELECT = 'id,goal_id,uploaded_by,file_name,file_type,file_size,note,created_at,storage_path';
+const PROOF_MEDIA_SELECT = 'id,external_url';
+const CHEER_SUMMARY_SELECT = 'id,giver_id,receiver_id,created_at';
 
 const isWebUrl = (proof?: Proof | null): boolean => {
   if (!proof || !proof.external_url) return false;
@@ -152,6 +156,7 @@ export default function MyGoals() {
 
   // Database-backed cheers & login state
   const [allCheers, setAllCheers] = useState<any[]>([]);
+  const [cheeringReceiverId, setCheeringReceiverId] = useState<string | null>(null);
   const [loggedInId, setLoggedInId] = useState<string>(() => {
     return localStorage.getItem(LOGIN_ID_KEY) || '';
   });
@@ -176,6 +181,7 @@ export default function MyGoals() {
   const [proofSubmitLoading, setProofSubmitLoading] = useState(false);
   const [expandedEmployeeId, setExpandedEmployeeId] = useState<string | null>(null);
   const [selectedPreviewProof, setSelectedPreviewProof] = useState<Proof | null>(null);
+  const hydratingProofIdsRef = useRef<Set<string>>(new Set());
   const [isDragging, setIsDragging] = useState<string | null>(null);
 
   const [proofToDelete, setProofToDelete] = useState<string | null>(null);
@@ -218,10 +224,31 @@ export default function MyGoals() {
   }, []);
 
   useEffect(() => {
-    if (selectedCycleId) {
-      fetchGoalsAndProofs(selectedCycleId);
+    if (!selectedCycleId || profilesList.length === 0) return;
+    fetchGoalsAndProofs(selectedCycleId, profilesList);
+  }, [selectedCycleId, profilesList.length]);
+
+  useEffect(() => {
+    if (!expandedEmployeeId) return;
+    const employeeGoals = allGoals.filter((g) => g.employee_id === expandedEmployeeId);
+    const proofIds = employeeGoals.flatMap((g) => (proofsMap[g.id] || []).map((p) => p.id));
+    const missingIds = getProofsMissingMedia(proofIds);
+    if (missingIds.length > 0) {
+      hydrateProofUrls(missingIds);
     }
-  }, [selectedCycleId, profilesList]);
+  }, [expandedEmployeeId, allGoals, proofsMap, getProofsMissingMedia, hydrateProofUrls]);
+
+  useEffect(() => {
+    if (viewMode !== 'workspace') return;
+    const sessionProfile = resolveSessionProfile(profilesList);
+    if (!sessionProfile) return;
+    const workspaceGoalIds = allGoals.filter((g) => g.employee_id === sessionProfile.id).map((g) => g.id);
+    const proofIds = workspaceGoalIds.flatMap((goalId) => (proofsMap[goalId] || []).map((p) => p.id));
+    const missingIds = getProofsMissingMedia(proofIds);
+    if (missingIds.length > 0) {
+      hydrateProofUrls(missingIds);
+    }
+  }, [viewMode, allGoals, proofsMap, profilesList, getProofsMissingMedia, hydrateProofUrls]);
 
   // Re-bind session after DB re-seeds (profile IDs change; email stays stable)
   useEffect(() => {
@@ -244,47 +271,99 @@ export default function MyGoals() {
     }
   }, [profilesList]);
 
-  const fetchCheers = async () => {
+  const mergeProofMedia = useCallback((rows: Array<{ id: string; external_url?: string | null }>) => {
+    if (!rows.length) return;
+    setProofsMap((prev) => {
+      const next: Record<string, Proof[]> = { ...prev };
+      for (const row of rows) {
+        for (const goalId of Object.keys(next)) {
+          next[goalId] = next[goalId].map((proof) =>
+            proof.id === row.id ? { ...proof, external_url: row.external_url ?? proof.external_url } : proof
+          );
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  const hydrateProofUrls = useCallback(async (proofIds: string[]) => {
+    const uniqueIds = [...new Set(proofIds.filter(Boolean))];
+    const pendingIds = uniqueIds.filter((id) => !hydratingProofIdsRef.current.has(id));
+    if (pendingIds.length === 0) return;
+
+    pendingIds.forEach((id) => hydratingProofIdsRef.current.add(id));
     try {
-      const { data, error } = await supabase.from('cheers').select('*');
+      const { data, error } = await supabase
+        .from('proofs')
+        .select(PROOF_MEDIA_SELECT)
+        .in('id', pendingIds);
+
       if (!error && data) {
-        setAllCheers(data);
+        mergeProofMedia(data);
       }
     } catch (err) {
-      console.error('Failed to fetch cheers:', err);
+      console.error('Failed to hydrate proof media:', err);
+    } finally {
+      pendingIds.forEach((id) => hydratingProofIdsRef.current.delete(id));
     }
+  }, [mergeProofMedia]);
+
+  const getProofsMissingMedia = useCallback((proofIds: string[]) => {
+    return proofIds.filter((id) => {
+      for (const goalProofs of Object.values(proofsMap)) {
+        const proof = goalProofs.find((p) => p.id === id);
+        if (proof) return !proof.external_url;
+      }
+      return false;
+    });
+  }, [proofsMap]);
+
+  const handlePreviewProof = async (proof: Proof) => {
+    if (!proof.external_url) {
+      const { data, error } = await supabase
+        .from('proofs')
+        .select(`${PROOF_MEDIA_SELECT},file_type,file_name`)
+        .eq('id', proof.id)
+        .single();
+
+      if (!error && data) {
+        mergeProofMedia([data]);
+        setSelectedPreviewProof({ ...proof, ...data });
+        return;
+      }
+    }
+    setSelectedPreviewProof(proof);
   };
 
   const initApp = async () => {
     setLoading(true);
     setErrorMsg('');
     try {
-      const { data: profilesData, error: profilesErr } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('full_name', { ascending: true });
+      const [profilesRes, cyclesRes, cheersRes] = await Promise.all([
+        supabase.from('profiles').select('*').order('full_name', { ascending: true }),
+        supabase
+          .from('incentive_cycles')
+          .select('*')
+          .order('year', { ascending: false })
+          .order('month', { ascending: false }),
+        supabase.from('cheers').select(CHEER_SUMMARY_SELECT),
+      ]);
 
-      if (profilesErr) throw profilesErr;
-      
-      const loadedProfiles = profilesData || [];
+      if (profilesRes.error) throw profilesRes.error;
+      if (cyclesRes.error) throw cyclesRes.error;
+
+      const loadedProfiles = profilesRes.data || [];
+      const cyclesData = cyclesRes.data || [];
       setProfilesList(loadedProfiles);
-
-      const { data: cyclesData, error: cyclesErr } = await supabase
-        .from('incentive_cycles')
-        .select('*')
-        .order('year', { ascending: false })
-        .order('month', { ascending: false });
-
-      if (cyclesErr) throw cyclesErr;
-      setCycles(cyclesData || []);
-
-      if (cyclesData && cyclesData.length > 0) {
-        const activeCycle = cyclesData.find(c => c.status === 'Active') || cyclesData[0];
-        setSelectedCycleId(activeCycle.id);
-        await fetchGoalsAndProofs(activeCycle.id, loadedProfiles);
+      setCycles(cyclesData);
+      if (!cheersRes.error && cheersRes.data) {
+        setAllCheers(cheersRes.data);
       }
 
-      await fetchCheers();
+      if (cyclesData.length > 0) {
+        const activeCycle = cyclesData.find((c) => c.status === 'Active') || cyclesData[0];
+        setSelectedCycleId(activeCycle.id);
+      }
     } catch (err: any) {
       setErrorMsg(`Initialization Error: ${err.message}`);
     } finally {
@@ -293,7 +372,6 @@ export default function MyGoals() {
   };
 
   const fetchGoalsAndProofs = async (cycleId: string, currentProfiles: Profile[] = profilesList) => {
-    setLoading(true);
     setErrorMsg('');
     try {
       const { data: goalsData, error: goalsErr } = await supabase
@@ -316,26 +394,28 @@ export default function MyGoals() {
       if (goalIds.length > 0) {
         const { data: proofsData, error: proofsErr } = await supabase
           .from('proofs')
-          .select('*')
+          .select(PROOF_SUMMARY_SELECT)
           .in('goal_id', goalIds);
 
         if (!proofsErr && proofsData) {
-          const pMap: Record<string, Proof[]> = {};
-          for (const pr of proofsData) {
-            if (!pMap[pr.goal_id]) pMap[pr.goal_id] = [];
-            pMap[pr.goal_id].push(pr as Proof);
-          }
-          setProofsMap(pMap);
+          setProofsMap((prev) => {
+            const pMap: Record<string, Proof[]> = {};
+            for (const pr of proofsData) {
+              const existing = prev[pr.goal_id]?.find((p) => p.id === pr.id);
+              if (!pMap[pr.goal_id]) pMap[pr.goal_id] = [];
+              pMap[pr.goal_id].push({
+                ...(pr as Proof),
+                external_url: existing?.external_url ?? (pr as Proof).external_url,
+              });
+            }
+            return pMap;
+          });
         }
       } else {
         setProofsMap({});
       }
-
-      await fetchCheers();
     } catch (err: any) {
       setErrorMsg(`Failed to query goals: ${err.message}`);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -760,42 +840,61 @@ export default function MyGoals() {
   };
 
   const handleCheerEmployee = async (receiverId: string) => {
+    if (cheeringReceiverId) return;
+
     const sessionProfile = resolveSessionProfile(profilesList);
     if (!sessionProfile) {
       setErrorMsg('Please sign in with your email first to cheer teammates.');
       return;
     }
 
+    setCheeringReceiverId(receiverId);
+
+    const existingCheer = allCheers.find(
+      (c) => c.giver_id === sessionProfile.id && c.receiver_id === receiverId
+    );
+    let optimisticId: string | null = null;
+
     try {
-      // Find if we already cheered this person
-      const existingCheer = allCheers.find(c => c.giver_id === sessionProfile.id && c.receiver_id === receiverId);
-
       if (existingCheer) {
-        // Toggle off - delete from DB
-        const { error } = await supabase
-          .from('cheers')
-          .delete()
-          .eq('id', existingCheer.id);
-
+        setAllCheers((prev) => prev.filter((c) => c.id !== existingCheer.id));
+        const { error } = await supabase.from('cheers').delete().eq('id', existingCheer.id);
         if (error) throw error;
-      } else {
-        // Toggle on - insert to DB
-        const { error } = await supabase
-          .from('cheers')
-          .insert({
-            giver_id: sessionProfile.id,
-            receiver_id: receiverId,
-            created_at: new Date().toISOString()
-          });
-
-        if (error) throw error;
+        return;
       }
 
-      // Re-fetch cheers to update UI reactively
-      await fetchCheers();
+      optimisticId = `optimistic-${Date.now()}`;
+      const optimisticCheer = {
+        id: optimisticId,
+        giver_id: sessionProfile.id,
+        receiver_id: receiverId,
+        created_at: new Date().toISOString(),
+      };
+      setAllCheers((prev) => [...prev, optimisticCheer]);
+
+      const { data, error } = await supabase.from('cheers').insert({
+        giver_id: sessionProfile.id,
+        receiver_id: receiverId,
+        created_at: optimisticCheer.created_at,
+      });
+
+      if (error) throw error;
+
+      if (data) {
+        setAllCheers((prev) =>
+          prev.map((cheer) => (cheer.id === optimisticId ? data : cheer))
+        );
+      }
     } catch (err: any) {
+      if (existingCheer) {
+        setAllCheers((prev) => [...prev, existingCheer]);
+      } else if (optimisticId) {
+        setAllCheers((prev) => prev.filter((c) => c.id !== optimisticId));
+      }
       console.error('Cheer toggle failed:', err);
       setErrorMsg(`Failed to register cheer: ${err.message}`);
+    } finally {
+      setCheeringReceiverId(null);
     }
   };
 
@@ -1315,25 +1414,48 @@ export default function MyGoals() {
 
                            {/* Interactive Cheers Action & Count */}
                            <div className="flex items-center">
+                             {(() => {
+                               const hasCheered = allCheers.some(
+                                 (c) => c.giver_id === sessionUserId && c.receiver_id === employee.id
+                               );
+                               const isSavingCheer = cheeringReceiverId === employee.id;
+
+                               return (
                              <button
+                               type="button"
+                               disabled={isSavingCheer}
                                onClick={(e) => {
                                  e.stopPropagation();
                                  handleCheerEmployee(employee.id);
                                }}
-                               className={`px-2.5 py-1.5 rounded-lg border text-orange-400 hover:text-orange-300 transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer ${
-                                 allCheers.some(c => c.giver_id === sessionUserId && c.receiver_id === employee.id)
-                                   ? 'bg-orange-500/25 border-orange-500/60 shadow-[0_0_10px_rgba(249,115,22,0.15)]'
-                                   : 'bg-orange-500/10 hover:bg-orange-500/20 border-orange-500/20 hover:border-orange-500/40'
+                               className={`px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 ${
+                                 isSavingCheer
+                                   ? 'opacity-60 cursor-wait bg-orange-500/10 border-orange-500/30 text-orange-400'
+                                   : hasCheered
+                                   ? 'bg-orange-500/25 border-orange-500/60 shadow-[0_0_10px_rgba(249,115,22,0.15)] text-orange-400 hover:text-orange-300 active:scale-95 cursor-pointer'
+                                   : 'bg-orange-500/10 hover:bg-orange-500/20 border-orange-500/20 hover:border-orange-500/40 text-orange-400 hover:text-orange-300 active:scale-95 cursor-pointer'
                                }`}
-                               title={allCheers.some(c => c.giver_id === sessionUserId && c.receiver_id === employee.id) ? "Remove Flame" : "Cheer Teammate!"}
+                               title={
+                                 isSavingCheer
+                                   ? 'Saving flame...'
+                                   : hasCheered
+                                   ? 'Remove Flame'
+                                   : 'Cheer Teammate!'
+                               }
                              >
-                               <Flame className={`w-3.5 h-3.5 transition-transform ${
-                                 allCheers.some(c => c.giver_id === sessionUserId && c.receiver_id === employee.id)
-                                   ? 'fill-orange-500 text-orange-400 scale-110'
-                                   : 'fill-orange-500/20 text-orange-400'
-                               }`} />
+                               {isSavingCheer ? (
+                                 <RefreshCw className="w-3.5 h-3.5 animate-spin text-orange-400" />
+                               ) : (
+                                 <Flame className={`w-3.5 h-3.5 transition-transform ${
+                                   hasCheered
+                                     ? 'fill-orange-500 text-orange-400 scale-110'
+                                     : 'fill-orange-500/20 text-orange-400'
+                                 }`} />
+                               )}
                                <span className="font-mono text-xs font-black">{employee.cheersCount}</span>
                              </button>
+                               );
+                             })()}
                            </div>
 
                         </div>
@@ -1386,7 +1508,7 @@ export default function MyGoals() {
                                             return (
                                               <div 
                                                 key={proof.id} 
-                                                onClick={() => setSelectedPreviewProof(proof)}
+                                                onClick={() => handlePreviewProof(proof)}
                                                 className="bg-zinc-950/80 p-2 rounded-xl border border-zinc-900 text-[10px] font-mono text-zinc-400 flex items-center justify-between gap-3 hover:border-emerald-500/30 hover:bg-[#11111a] transition-all cursor-pointer"
                                               >
                                                 <div className="flex items-center gap-2 truncate flex-1 min-w-0">
@@ -1709,7 +1831,7 @@ export default function MyGoals() {
                               return (
                                 <div 
                                   key={proof.id} 
-                                  onClick={() => setSelectedPreviewProof(proof)}
+                                  onClick={() => handlePreviewProof(proof)}
                                   className="bg-zinc-950 p-2 rounded-xl border border-zinc-900 flex items-center justify-between gap-3 hover:border-emerald-500/30 hover:bg-[#11111a] transition-all cursor-pointer"
                                 >
                                   <div className="flex items-center gap-2 truncate flex-1 min-w-0">

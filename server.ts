@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
-import { and, eq, ne, inArray, asc, desc } from 'drizzle-orm';
+import { and, eq, ne, inArray, asc, desc, getTableColumns } from 'drizzle-orm';
 
 import { db } from './src/db/index.ts';
 import {
@@ -58,6 +58,22 @@ function keysToCamel(obj: any): any {
     newObj[camelKey] = val;
   }
   return newObj;
+}
+
+function parseSelectColumns(tableObj: any, selectStr?: string) {
+  if (!selectStr || selectStr.trim() === '*') return undefined;
+
+  const allCols = getTableColumns(tableObj);
+  const selection: Record<string, any> = {};
+
+  for (const part of selectStr.split(',').map((s) => s.trim()).filter(Boolean)) {
+    const camelKey = toCamelCase(part);
+    if (allCols[camelKey]) {
+      selection[camelKey] = allCols[camelKey];
+    }
+  }
+
+  return Object.keys(selection).length > 0 ? selection : undefined;
 }
 
 // Table schema mappings
@@ -118,7 +134,7 @@ function buildOrderBy(tableObj: any, orders: any[]) {
 
 // 1. GENERIC API DATABASE PROXY ROUTE
 app.post('/api/db', async (req, res) => {
-  const { table, method, filters = [], orders = [], isSingle = false, data } = req.body;
+  const { table, method, filters = [], orders = [], isSingle = false, data, selectStr } = req.body;
 
   const tableObj = tableMap[table];
   if (!tableObj) {
@@ -127,7 +143,8 @@ app.post('/api/db', async (req, res) => {
 
   try {
     if (method === 'select') {
-      let query = db.select().from(tableObj);
+      const columns = parseSelectColumns(tableObj, selectStr);
+      let query = columns ? db.select(columns).from(tableObj) : db.select().from(tableObj);
       const whereClause = buildWhereClause(tableObj, filters);
       if (whereClause) {
         query = query.where(whereClause) as any;
