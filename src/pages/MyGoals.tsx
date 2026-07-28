@@ -219,58 +219,6 @@ export default function MyGoals() {
     );
   };
 
-  useEffect(() => {
-    initApp();
-  }, []);
-
-  useEffect(() => {
-    if (!selectedCycleId || profilesList.length === 0) return;
-    fetchGoalsAndProofs(selectedCycleId, profilesList);
-  }, [selectedCycleId, profilesList.length]);
-
-  useEffect(() => {
-    if (!expandedEmployeeId) return;
-    const employeeGoals = allGoals.filter((g) => g.employee_id === expandedEmployeeId);
-    const proofIds = employeeGoals.flatMap((g) => (proofsMap[g.id] || []).map((p) => p.id));
-    const missingIds = getProofsMissingMedia(proofIds);
-    if (missingIds.length > 0) {
-      hydrateProofUrls(missingIds);
-    }
-  }, [expandedEmployeeId, allGoals, proofsMap, getProofsMissingMedia, hydrateProofUrls]);
-
-  useEffect(() => {
-    if (viewMode !== 'workspace') return;
-    const sessionProfile = resolveSessionProfile(profilesList);
-    if (!sessionProfile) return;
-    const workspaceGoalIds = allGoals.filter((g) => g.employee_id === sessionProfile.id).map((g) => g.id);
-    const proofIds = workspaceGoalIds.flatMap((goalId) => (proofsMap[goalId] || []).map((p) => p.id));
-    const missingIds = getProofsMissingMedia(proofIds);
-    if (missingIds.length > 0) {
-      hydrateProofUrls(missingIds);
-    }
-  }, [viewMode, allGoals, proofsMap, profilesList, getProofsMissingMedia, hydrateProofUrls]);
-
-  // Re-bind session after DB re-seeds (profile IDs change; email stays stable)
-  useEffect(() => {
-    if (profilesList.length === 0) return;
-
-    const sessionProfile = resolveSessionProfile(profilesList);
-    if (sessionProfile) {
-      setLoggedInId(sessionProfile.id);
-      setActiveEmployeeId(sessionProfile.id);
-      localStorage.setItem(LOGIN_ID_KEY, sessionProfile.id);
-      localStorage.setItem(LOGIN_EMAIL_KEY, sessionProfile.email.toLowerCase());
-      return;
-    }
-
-    if (loggedInId || localStorage.getItem(LOGIN_EMAIL_KEY)) {
-      setLoggedInId('');
-      setActiveEmployeeId('');
-      localStorage.removeItem(LOGIN_ID_KEY);
-      localStorage.removeItem(LOGIN_EMAIL_KEY);
-    }
-  }, [profilesList]);
-
   const mergeProofMedia = useCallback((rows: Array<{ id: string; external_url?: string | null }>) => {
     if (!rows.length) return;
     setProofsMap((prev) => {
@@ -418,6 +366,58 @@ export default function MyGoals() {
       setErrorMsg(`Failed to query goals: ${err.message}`);
     }
   };
+
+  useEffect(() => {
+    initApp();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedCycleId || profilesList.length === 0) return;
+    fetchGoalsAndProofs(selectedCycleId, profilesList);
+  }, [selectedCycleId, profilesList.length]);
+
+  useEffect(() => {
+    if (!expandedEmployeeId) return;
+    const employeeGoals = allGoals.filter((g) => g.employee_id === expandedEmployeeId);
+    const proofIds = employeeGoals.flatMap((g) => (proofsMap[g.id] || []).map((p) => p.id));
+    const missingIds = getProofsMissingMedia(proofIds);
+    if (missingIds.length > 0) {
+      hydrateProofUrls(missingIds);
+    }
+  }, [expandedEmployeeId, allGoals, proofsMap, getProofsMissingMedia, hydrateProofUrls]);
+
+  useEffect(() => {
+    if (viewMode !== 'workspace') return;
+    const sessionProfile = resolveSessionProfile(profilesList);
+    if (!sessionProfile) return;
+    const workspaceGoalIds = allGoals.filter((g) => g.employee_id === sessionProfile.id).map((g) => g.id);
+    const proofIds = workspaceGoalIds.flatMap((goalId) => (proofsMap[goalId] || []).map((p) => p.id));
+    const missingIds = getProofsMissingMedia(proofIds);
+    if (missingIds.length > 0) {
+      hydrateProofUrls(missingIds);
+    }
+  }, [viewMode, allGoals, proofsMap, profilesList, getProofsMissingMedia, hydrateProofUrls]);
+
+  // Re-bind session after DB re-seeds (profile IDs change; email stays stable)
+  useEffect(() => {
+    if (profilesList.length === 0) return;
+
+    const sessionProfile = resolveSessionProfile(profilesList);
+    if (sessionProfile) {
+      setLoggedInId(sessionProfile.id);
+      setActiveEmployeeId(sessionProfile.id);
+      localStorage.setItem(LOGIN_ID_KEY, sessionProfile.id);
+      localStorage.setItem(LOGIN_EMAIL_KEY, sessionProfile.email.toLowerCase());
+      return;
+    }
+
+    if (loggedInId || localStorage.getItem(LOGIN_EMAIL_KEY)) {
+      setLoggedInId('');
+      setActiveEmployeeId('');
+      localStorage.removeItem(LOGIN_ID_KEY);
+      localStorage.removeItem(LOGIN_EMAIL_KEY);
+    }
+  }, [profilesList]);
 
   const handleOpenCreateForm = (type: 'personal' | 'business', owner?: Profile | null) => {
     const profile = owner ?? resolveSessionProfile(profilesList);
