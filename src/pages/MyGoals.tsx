@@ -1020,7 +1020,7 @@ export default function MyGoals() {
     if (b.calculatedProgress !== a.calculatedProgress) {
       return b.calculatedProgress - a.calculatedProgress;
     }
-    return b.totalStamps - a.totalStamps;
+    return b.cheersCount - a.cheersCount;
   });
 
   const loggedInProfile = resolveSessionProfile(profilesList);
