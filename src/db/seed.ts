@@ -698,6 +698,13 @@ async function runSeed() {
         .where(and(eq(incentiveCycles.month, data.month), eq(incentiveCycles.year, data.year)))
         .limit(1);
       if (existing.length > 0) {
+        if (existing[0].status !== data.status) {
+          await db
+            .update(incentiveCycles)
+            .set({ status: data.status, updatedAt: new Date() })
+            .where(eq(incentiveCycles.id, existing[0].id));
+          console.log(`Updated cycle status: ${existing[0].name} -> ${data.status}`);
+        }
         console.log(`Cycle already exists: ${existing[0].name}`);
         return existing[0];
       }
@@ -715,7 +722,7 @@ async function runSeed() {
       goalSubmissionDeadline: '2026-07-20',
       proofSubmissionDeadline: '2026-07-28',
       reviewDeadline: '2026-07-31',
-      status: 'Active',
+      status: 'Closed',
     });
 
     await ensureCycle({
@@ -727,7 +734,7 @@ async function runSeed() {
       goalSubmissionDeadline: '2026-08-10',
       proofSubmissionDeadline: '2026-08-28',
       reviewDeadline: '2026-08-31',
-      status: 'Draft',
+      status: 'Active',
     });
 
     // 3. Remove employees no longer on the roster (goals cascade-delete with profile)
@@ -750,8 +757,8 @@ async function runSeed() {
     console.log('\n=========================================');
     console.log('DATABASE AND CYCLE SEEDING COMPLETE!');
     console.log('Seeded Monthly Cycles:');
-    console.log('1. July 2026 Cycle   - Active');
-    console.log('2. August 2026 Cycle - Draft');
+    console.log('1. July 2026 Cycle   - Closed');
+    console.log('2. August 2026 Cycle - Active');
     console.log('=========================================\n');
 
   } catch (err) {

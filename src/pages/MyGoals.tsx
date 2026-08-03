@@ -4,6 +4,7 @@ import {
   Flame, Plus, Trash2, Eye, Edit3, X, Sparkles, Send, Compass, Lock, Link as LinkIcon, Upload, ExternalLink, RefreshCw, Search, FileText, Video, Image as ImageIcon, UploadCloud, Download, LogOut, Filter, Users, Globe
 } from 'lucide-react';
 import { Profile, IncentiveCycle, Goal, Proof } from '../types';
+import { isCycleLocked, isJuly2026Cycle } from '../cycleLock';
 import { 
   DEPARTMENTS, SMILEYS, getSmileyForPercentage 
 } from '../data';
@@ -258,7 +259,7 @@ export default function MyGoals() {
 
   const getProofsMissingMedia = useCallback((proofIds: string[]) => {
     return proofIds.filter((id) => {
-      for (const goalProofs of Object.values(proofsMap)) {
+      for (const goalProofs of Object.values(proofsMap) as Proof[][]) {
         const proof = goalProofs.find((p) => p.id === id);
         if (proof) return !proof.external_url;
       }
@@ -419,7 +420,19 @@ export default function MyGoals() {
     }
   }, [profilesList]);
 
+  const selectedCycle = cycles.find((c) => c.id === selectedCycleId) || null;
+  const isSelectedCycleLocked = isCycleLocked(selectedCycle);
+
+  const ensureCycleEditable = () => {
+    if (isSelectedCycleLocked) {
+      setErrorMsg('July 2026 is locked. Progress and goal edits are no longer allowed.');
+      return false;
+    }
+    return true;
+  };
+
   const handleOpenCreateForm = (type: 'personal' | 'business', owner?: Profile | null) => {
+    if (!ensureCycleEditable()) return;
     const profile = owner ?? resolveSessionProfile(profilesList);
     if (!profile) {
       setErrorMsg('Please sign in to create goals.');
@@ -437,6 +450,7 @@ export default function MyGoals() {
   };
 
   const handleOpenEditForm = (goal: Goal, owner?: Profile | null) => {
+    if (!ensureCycleEditable()) return;
     const profile = owner ?? resolveSessionProfile(profilesList);
     if (!profile || goal.employee_id !== profile.id) {
       setErrorMsg("You cannot edit another teammate's goal.");
@@ -454,6 +468,7 @@ export default function MyGoals() {
   };
 
   const handleSaveGoal = async () => {
+    if (!ensureCycleEditable()) return;
     const title = goalTitle.trim();
     const description = goalDescription.trim();
     const missingTitle = !title;
@@ -535,6 +550,7 @@ export default function MyGoals() {
   };
 
   const handleDeleteGoal = (goalId: string) => {
+    if (!ensureCycleEditable()) return;
     setGoalToDelete(goalId);
   };
 
@@ -570,6 +586,7 @@ export default function MyGoals() {
   };
 
   const handleDeleteProof = (proofId: string, e?: React.MouseEvent) => {
+    if (!ensureCycleEditable()) return;
     if (e) e.stopPropagation();
     setProofToDelete(proofId);
   };
@@ -594,6 +611,7 @@ export default function MyGoals() {
   };
 
   const handleSmileyClick = async (goal: Goal, smileyIndex: number, owner?: Profile | null) => {
+    if (!ensureCycleEditable()) return;
     const profile = owner ?? resolveSessionProfile(profilesList);
     if (!profile || goal.employee_id !== profile.id) {
       setErrorMsg("You cannot edit another teammate's goal.");
@@ -647,6 +665,7 @@ export default function MyGoals() {
 
   const handleProgressProofSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (!ensureCycleEditable()) return;
     if (!progressProofGoal) return;
 
     if (proofModalTab === 'upload' && !progressProofFile) {
@@ -749,6 +768,7 @@ export default function MyGoals() {
 
   const handleSubmitProof = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!ensureCycleEditable()) return;
     if (!uploadingProofForGoalId) return;
 
     if (!proofExternalUrl.trim() && !proofFileName.trim()) {
@@ -789,6 +809,8 @@ export default function MyGoals() {
   };
 
   const handleFileDropOrSelect = async (file: File, goalId: string) => {
+    if (!ensureCycleEditable()) return;
+
     const isAllowed = file.type.startsWith('image/') || file.type.startsWith('video/') || file.type === 'application/pdf';
     
     if (!isAllowed) {
@@ -937,6 +959,62 @@ export default function MyGoals() {
     return cycleName.replace(/\s*Cycle\s*/gi, '').trim();
   };
 
+  const downloadCycleProgressCsv = () => {
+    const escapeCsv = (value: string | number) => {
+      const text = String(value ?? '');
+      return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+
+    const rows = profilesList
+      .map((profile) => {
+        const pGoals = allGoals.filter((g) => g.employee_id === profile.id);
+        const bGoals = pGoals.filter((g) => g.goal_type === 'business');
+        const persGoals = pGoals.filter((g) => g.goal_type === 'personal');
+        const businessPct =
+          bGoals.length > 0
+            ? Math.round(bGoals.reduce((sum, g) => sum + g.progress_percentage, 0) / bGoals.length)
+            : 0;
+        const personalPct =
+          persGoals.length > 0
+            ? Math.round(persGoals.reduce((sum, g) => sum + g.progress_percentage, 0) / persGoals.length)
+            : 0;
+
+        return {
+          name: formatDisplayLabel(profile.full_name),
+          department: formatDisplayLabel(profile.department),
+          email: profile.email,
+          businessPct,
+          personalPct,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    const header = 'Name,Department,Email,Business Progress %,Personal Progress %';
+    const body = rows
+      .map((row) =>
+        [
+          escapeCsv(row.name),
+          escapeCsv(row.department),
+          escapeCsv(row.email),
+          row.businessPct,
+          row.personalPct,
+        ].join(',')
+      )
+      .join('\n');
+    const cycleLabel = selectedCycle
+      ? getCycleDisplayName(selectedCycle.name).replace(/\s+/g, '-').toLowerCase()
+      : 'cycle';
+    const blob = new Blob([`${header}\n${body}\n`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${cycleLabel}-progress.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   // Filter profiles based on selected department, no goals filter, and text search
   const filteredProfiles = profilesList.filter(p => {
     if (selectedDepartment !== 'All' && p.department !== selectedDepartment) return false;
@@ -1028,7 +1106,7 @@ export default function MyGoals() {
   const workspaceGoals = sessionUserId
     ? allGoals.filter((g) => g.employee_id === sessionUserId)
     : [];
-  const canEditGoals = !!loggedInProfile;
+  const canEditGoals = !!loggedInProfile && !isSelectedCycleLocked;
 
   if (loading && profilesList.length === 0) {
     return (
@@ -1126,11 +1204,23 @@ export default function MyGoals() {
               >
                 {cycles.map((c) => (
                   <option key={c.id} value={c.id} className="bg-[#0e0e12] text-white">
-                    {getCycleDisplayName(c.name)}
+                    {getCycleDisplayName(c.name)}{isCycleLocked(c) ? ' (Locked)' : ''}
                   </option>
                 ))}
               </select>
             </div>
+
+            {selectedCycle && isJuly2026Cycle(selectedCycle) && (
+              <button
+                type="button"
+                onClick={downloadCycleProgressCsv}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:text-white hover:border-zinc-700 text-xs font-mono font-bold uppercase transition-all cursor-pointer"
+                title="Download July progress report"
+              >
+                <Download className="w-3.5 h-3.5" />
+                July CSV
+              </button>
+            )}
 
             {loggedInProfile && (
               <div className="flex items-center gap-2.5 bg-zinc-900/80 border border-zinc-800/80 pl-3 pr-2 py-1 rounded-xl">
@@ -1168,6 +1258,16 @@ export default function MyGoals() {
             <button onClick={() => setSuccessMsg('')} className="text-emerald-400 hover:text-white">
               <X className="w-4 h-4" />
             </button>
+          </div>
+        )}
+
+        {isSelectedCycleLocked && (
+          <div className="mb-6 p-4 bg-amber-950/20 border border-amber-500/30 text-amber-200 text-sm rounded-xl flex items-center gap-3 font-sans">
+            <Lock className="w-4 h-4 shrink-0 text-amber-400" />
+            <span>
+              {getCycleDisplayName(selectedCycle?.name || 'This cycle')} is locked. Progress, proofs, and goal edits are read-only.
+              {selectedCycle && isJuly2026Cycle(selectedCycle) ? ' Use the July CSV button in the header to download final progress.' : ''}
+            </span>
           </div>
         )}
 
@@ -1652,6 +1752,8 @@ export default function MyGoals() {
                 </div>
 
                 <div className="flex gap-2 w-full sm:w-auto justify-end">
+                  {canEditGoals && (
+                    <>
                   <button
                     onClick={() => handleOpenCreateForm('personal', loggedInProfile)}
                     className="px-3 py-1.5 bg-fuchsia-950/40 hover:bg-fuchsia-900/40 text-pink-300 font-sans font-semibold text-xs rounded-lg border border-fuchsia-500/30 transition-colors cursor-pointer"
@@ -1664,6 +1766,8 @@ export default function MyGoals() {
                   >
                     + Add Business Goal
                   </button>
+                    </>
+                  )}
                 </div>
               </div>
 

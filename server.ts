@@ -15,6 +15,7 @@ import {
   incentiveDecisions,
   cheers
 } from './src/db/schema.ts';
+import { isCycleLocked } from './src/cycleLock.ts';
 
 dotenv.config();
 
@@ -132,6 +133,39 @@ function buildOrderBy(tableObj: any, orders: any[]) {
   return orderByArr;
 }
 
+async function getCycleById(cycleId: string) {
+  const [cycle] = await db
+    .select()
+    .from(incentiveCycles)
+    .where(eq(incentiveCycles.id, cycleId))
+    .limit(1);
+  return cycle || null;
+}
+
+async function isLockedGoalId(goalId: string) {
+  const [goal] = await db
+    .select({ cycleId: goals.cycleId })
+    .from(goals)
+    .where(eq(goals.id, goalId))
+    .limit(1);
+  if (!goal) return false;
+  const cycle = await getCycleById(goal.cycleId);
+  return isCycleLocked(cycle);
+}
+
+async function assertGoalMutationAllowed(goalId: string) {
+  if (await isLockedGoalId(goalId)) {
+    throw new Error('July 2026 is locked. Progress and goal edits are no longer allowed.');
+  }
+}
+
+async function assertCycleMutationAllowed(cycleId: string) {
+  const cycle = await getCycleById(cycleId);
+  if (isCycleLocked(cycle)) {
+    throw new Error('July 2026 is locked. Progress and goal edits are no longer allowed.');
+  }
+}
+
 // 1. GENERIC API DATABASE PROXY ROUTE
 app.post('/api/db', async (req, res) => {
   const { table, method, filters = [], orders = [], isSingle = false, data, selectStr } = req.body;
@@ -193,11 +227,28 @@ app.post('/api/db', async (req, res) => {
 
     } else if (method === 'insert') {
       const camelData = keysToCamel(data);
+
+      if (table === 'goals' && camelData.cycleId) {
+        await assertCycleMutationAllowed(camelData.cycleId);
+      }
+
+      if (table === 'proofs' && camelData.goalId) {
+        await assertGoalMutationAllowed(camelData.goalId);
+      }
+
       const results = await db.insert(tableObj).values(camelData).returning() as any[];
       return res.json({ data: results.length > 0 ? keysToSnake(results[0]) : null });
 
     } else if (method === 'update') {
       const camelData = keysToCamel(data);
+
+      if (table === 'goals') {
+        const goalIdFilter = filters.find((f: any) => f.col === 'id' && f.op === 'eq')?.val;
+        if (goalIdFilter) {
+          await assertGoalMutationAllowed(goalIdFilter);
+        }
+      }
+
       let query = db.update(tableObj).set(camelData);
       const whereClause = buildWhereClause(tableObj, filters);
       if (whereClause) {
@@ -208,6 +259,28 @@ app.post('/api/db', async (req, res) => {
 
     } else if (method === 'delete') {
       console.log(`[DB DELETE] Table: ${table}, Filters:`, JSON.stringify(filters));
+
+      if (table === 'goals') {
+        const goalIdFilter = filters.find((f: any) => f.col === 'id' && f.op === 'eq')?.val;
+        if (goalIdFilter) {
+          await assertGoalMutationAllowed(goalIdFilter);
+        }
+      }
+
+      if (table === 'proofs') {
+        const proofIdFilter = filters.find((f: any) => f.col === 'id' && f.op === 'eq')?.val;
+        if (proofIdFilter) {
+          const [proof] = await db
+            .select({ goalId: proofs.goalId })
+            .from(proofs)
+            .where(eq(proofs.id, proofIdFilter))
+            .limit(1);
+          if (proof) {
+            await assertGoalMutationAllowed(proof.goalId);
+          }
+        }
+      }
+
       let query = db.delete(tableObj);
       const whereClause = buildWhereClause(tableObj, filters);
       if (whereClause) {
