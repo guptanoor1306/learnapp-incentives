@@ -4,12 +4,10 @@ import { join } from 'path';
 import { and, eq } from 'drizzle-orm';
 import { db } from '../src/db/index.ts';
 import { profiles, incentiveCycles, goals } from '../src/db/schema.ts';
-
-function avgProgress(goalList: { progressPercentage: number }[]) {
-  if (goalList.length === 0) return 0;
-  const total = goalList.reduce((sum, goal) => sum + goal.progressPercentage, 0);
-  return Math.round(total / goalList.length);
-}
+import {
+  averageGoalTypeProgress,
+  calculateLeaderboardProgress,
+} from '../src/progressMetrics.ts';
 
 function escapeCsv(value: string | number) {
   const text = String(value ?? '');
@@ -37,19 +35,22 @@ async function exportJulyProgress() {
 
   const rows = allProfiles.map((profile) => {
     const employeeGoals = julyGoals.filter((goal) => goal.employeeId === profile.id);
-    const businessGoals = employeeGoals.filter((goal) => goal.goalType === 'business');
-    const personalGoals = employeeGoals.filter((goal) => goal.goalType === 'personal');
+    const goalInputs = employeeGoals.map((goal) => ({
+      goalType: goal.goalType,
+      progressPercentage: goal.progressPercentage,
+    }));
 
     return {
       name: profile.fullName,
       department: profile.department,
       email: profile.email,
-      businessPct: avgProgress(businessGoals),
-      personalPct: avgProgress(personalGoals),
+      businessPct: averageGoalTypeProgress(goalInputs, 'business'),
+      personalPct: averageGoalTypeProgress(goalInputs, 'personal'),
+      finalPct: calculateLeaderboardProgress(goalInputs),
     };
   });
 
-  const header = 'Name,Department,Email,Business Progress %,Personal Progress %';
+  const header = 'Name,Department,Email,Business Progress %,Personal Progress %,Final Progress %';
   const body = rows
     .map((row) =>
       [
@@ -58,6 +59,7 @@ async function exportJulyProgress() {
         escapeCsv(row.email),
         row.businessPct,
         row.personalPct,
+        row.finalPct,
       ].join(',')
     )
     .join('\n');

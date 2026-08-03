@@ -5,6 +5,10 @@ import {
 } from 'lucide-react';
 import { Profile, IncentiveCycle, Goal, Proof } from '../types';
 import { isCycleLocked, isJuly2026Cycle } from '../cycleLock';
+import {
+  averageGoalTypeProgress,
+  calculateLeaderboardProgress,
+} from '../progressMetrics';
 import { 
   DEPARTMENTS, SMILEYS, getSmileyForPercentage 
 } from '../data';
@@ -968,28 +972,23 @@ export default function MyGoals() {
     const rows = profilesList
       .map((profile) => {
         const pGoals = allGoals.filter((g) => g.employee_id === profile.id);
-        const bGoals = pGoals.filter((g) => g.goal_type === 'business');
-        const persGoals = pGoals.filter((g) => g.goal_type === 'personal');
-        const businessPct =
-          bGoals.length > 0
-            ? Math.round(bGoals.reduce((sum, g) => sum + g.progress_percentage, 0) / bGoals.length)
-            : 0;
-        const personalPct =
-          persGoals.length > 0
-            ? Math.round(persGoals.reduce((sum, g) => sum + g.progress_percentage, 0) / persGoals.length)
-            : 0;
+        const goalInputs = pGoals.map((g) => ({
+          goalType: g.goal_type,
+          progressPercentage: g.progress_percentage,
+        }));
 
         return {
           name: formatDisplayLabel(profile.full_name),
           department: formatDisplayLabel(profile.department),
           email: profile.email,
-          businessPct,
-          personalPct,
+          businessPct: averageGoalTypeProgress(goalInputs, 'business'),
+          personalPct: averageGoalTypeProgress(goalInputs, 'personal'),
+          finalPct: calculateLeaderboardProgress(goalInputs),
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    const header = 'Name,Department,Email,Business Progress %,Personal Progress %';
+    const header = 'Name,Department,Email,Business Progress %,Personal Progress %,Final Progress %';
     const body = rows
       .map((row) =>
         [
@@ -998,6 +997,7 @@ export default function MyGoals() {
           escapeCsv(row.email),
           row.businessPct,
           row.personalPct,
+          row.finalPct,
         ].join(',')
       )
       .join('\n');

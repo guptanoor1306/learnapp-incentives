@@ -1,64 +1,64 @@
-Name,Department,Email,Business Progress %,Personal Progress %
-Aalim,Varsity,aalim.abbasi@learnapp.com,0,0
-Aastha Gupta,HR,aastha.gupta@learnapp.com,100,0
-Abhishek Rathore,Partnerships,abhishek@learnapp.com,0,0
-Abhishek Sharma,Editing 2,abhishek.sharma@learnapp.com,50,100
-Abhishek Shukla,Graphics,Abhishek.shukla@learnapp.com,0,50
-Ajay Singh Rawat,Editing 1,ajay.rawat@learnapp.com,75,75
-Akriti Singh,Editing 1,Akriti.singh@learnapp.com,50,100
-Aman Deep,Sound,aman@learnapp.com,0,100
-Aman Ghosh,Graphics,aman.ghosh@learnapp.com,75,0
-Amardeep Singh,Sound,amardeep@learnapp.com,75,75
-Amit Joshi,Graphics,Amit.joshi@learnapp.com,100,100
-Anish Mohan,Social,anish@learnapp.com,0,50
-Anjali Rawat,Zerodha Online,anjali@learnapp.com,50,100
-Ankush Chaudhary,Product,ankush.choudhary@learnapp.com,88,100
-Anmol Anand,Varsity,anmol@learnapp.com,25,25
-Anubha Rathi,Graphics,anubha@learnapp.com,50,75
-Apoorv Suman,Varsity,Apoorv.suman@learnapp.com,50,100
-Ashutosh Kaushik,Sound,ashutosh.kaushik@learnapp.com,75,75
-Bhavya Oberoi,Product,bhavya.oberoi@learnapp.com,88,100
-Bhavya S Menon,Sound,Bhavya.menon@learnapp.com,0,0
-Bratish Kanti Banerjee,Editing 1,bratish.banerjee@learnapp.com,75,50
-Chandan Kumar Vishwakarma,Technology,chandan@learnapp.com,0,25
-Deepak Ch.,Zerodha Online,deepak@learnapp.com,100,100
-Deepak Kumar,Editing 1,Deepak.kumar@learnapp.com,88,100
-Dheeraj,Zerodha Online,dheeraj.rajvania@learnapp.com,0,50
-Divyanshu Mishra,Editing 2,Divyanshu@learnapp.com,100,100
-Harish Rawat,Editing 2,harish@learnapp.com,50,75
-Harshita Varshney,Technology,harshita.varshney@learnapp.com,100,100
-Ishika Badal,Graphics,ishika.badal@learnapp.com,25,100
-Khushi Narula,Social,khushi.narula@learnapp.com,0,0
-Manish Singh Mahant,Varsity,manish.singh@learnapp.com,100,100
-Manoj Kumar,Varsity,manoj.kumar@learnapp.com,0,0
-Mayank Chauhan,Graphics,Mayank.Chauhan@learnapp.com,75,0
-MD Wasim,Editing 1,wasim@learnapp.com,25,50
-Mod Abid,Pre-production,mod.abid@learnapp.com,0,0
-Mudhit Mehra,Pre-production,mudhit.mehra@learnapp.com,100,0
-Naveen Tiwari,Sound,naveen.tiwari@learnapp.com,75,100
-Nishita Gupta,Content 1,nishita.gupta@learnapp.com,100,100
-Noor Gupta,Product,noor@learnapp.com,88,100
-Piyush Vaid,Graphics,Piyush@learnapp.com,100,88
-Pranchal Chaudhary,Graphics,pranchal@learnapp.com,75,50
-Priyanshu Kumar,Content 2,priyanshu.kumar@learnapp.com,63,100
-Pulkit Lalwani,Content 2,pulkit@learnapp.com,75,75
-Rahul,Sound,rahul@learnapp.com,50,100
-Raj,Graphics,raj@learnapp.com,25,50
-Rakhi Dhama,Graphics,rakhi.dhama@learnapp.com,100,100
-Rishabh Bangwal,Editing 2,Rishabh@learnapp.com,100,100
-Rohit Sondhi,Social,rohit@learnapp.com,0,0
-Sahil Mathur,Content 1,sahil.mathur@learnapp.com,100,100
-Satyam Gupta,Social,satyam@learnapp.com,100,100
-Satyavrat Sharma,Zerodha Online,satyavrat.sharma@learnapp.com,75,100
-Shreya Sarawagi,Graphics,shreya@learnapp.com,100,100
-Shuchita Kumar,Content 1,shuchita.kumar@learnapp.com,100,100
-Siya Khanna,Social,siya.khanna@learnapp.com,100,100
-Supriya CK,Technology,supriya@learnapp.com,100,100
-Swati Juyal,Zerodha Online,swatijuyal@learnapp.com,75,100
-Tanya Khanna,Social,tanya.khanna@learnapp.com,0,0
-Tilak Mahawar,Technology,tilak.mahawar@learnapp.com,100,100
-Tushar Kumar,Technology,tushar.kumar@learnapp.com,100,100
-Vaibhav Singhal,Graphics,vaibhav@learnapp.com,75,75
-Vaishnavi Mishra,Product,vaishnavi.mishra@learnapp.com,75,100
-Vandit Rai,Pre-production,vandit@learnapp.com,75,0
-Vikas Kumar,Varsity,Vikas.kumar@learnapp.com,75,75
+Name,Department,Email,Business Progress %,Personal Progress %,Final Progress %
+Aalim,Varsity,aalim.abbasi@learnapp.com,0,0,0
+Aastha Gupta,HR,aastha.gupta@learnapp.com,100,0,50
+Abhishek Rathore,Partnerships,abhishek@learnapp.com,0,0,0
+Abhishek Sharma,Editing 2,abhishek.sharma@learnapp.com,50,100,75
+Abhishek Shukla,Graphics,Abhishek.shukla@learnapp.com,0,50,25
+Ajay Singh Rawat,Editing 1,ajay.rawat@learnapp.com,75,75,75
+Akriti Singh,Editing 1,Akriti.singh@learnapp.com,50,100,75
+Aman Deep,Sound,aman@learnapp.com,0,100,100
+Aman Ghosh,Graphics,aman.ghosh@learnapp.com,75,0,38
+Amardeep Singh,Sound,amardeep@learnapp.com,75,75,75
+Amit Joshi,Graphics,Amit.joshi@learnapp.com,100,100,100
+Anish Mohan,Social,anish@learnapp.com,0,50,25
+Anjali Rawat,Zerodha Online,anjali@learnapp.com,50,100,75
+Ankush Chaudhary,Product,ankush.choudhary@learnapp.com,88,100,92
+Anmol Anand,Varsity,anmol@learnapp.com,25,25,25
+Anubha Rathi,Graphics,anubha@learnapp.com,50,100,75
+Apoorv Suman,Varsity,Apoorv.suman@learnapp.com,50,100,75
+Ashutosh Kaushik,Sound,ashutosh.kaushik@learnapp.com,75,75,75
+Bhavya Oberoi,Product,bhavya.oberoi@learnapp.com,88,100,92
+Bhavya S Menon,Sound,Bhavya.menon@learnapp.com,0,0,0
+Bratish Kanti Banerjee,Editing 1,bratish.banerjee@learnapp.com,75,50,63
+Chandan Kumar Vishwakarma,Technology,chandan@learnapp.com,0,25,25
+Deepak Ch.,Zerodha Online,deepak@learnapp.com,100,100,100
+Deepak Kumar,Editing 1,Deepak.kumar@learnapp.com,88,100,92
+Dheeraj,Zerodha Online,dheeraj.rajvania@learnapp.com,0,50,50
+Divyanshu Mishra,Editing 2,Divyanshu@learnapp.com,100,100,100
+Harish Rawat,Editing 2,harish@learnapp.com,50,75,63
+Harshita Varshney,Technology,harshita.varshney@learnapp.com,100,100,100
+Ishika Badal,Graphics,ishika.badal@learnapp.com,25,100,63
+Khushi Narula,Social,khushi.narula@learnapp.com,0,0,0
+Manish Singh Mahant,Varsity,manish.singh@learnapp.com,100,100,100
+Manoj Kumar,Varsity,manoj.kumar@learnapp.com,0,0,0
+Mayank Chauhan,Graphics,Mayank.Chauhan@learnapp.com,75,0,38
+MD Wasim,Editing 1,wasim@learnapp.com,25,50,38
+Mod Abid,Pre-production,mod.abid@learnapp.com,0,0,0
+Mudhit Mehra,Pre-production,mudhit.mehra@learnapp.com,100,0,50
+Naveen Tiwari,Sound,naveen.tiwari@learnapp.com,75,100,88
+Nishita Gupta,Content 1,nishita.gupta@learnapp.com,100,100,100
+Noor Gupta,Product,noor@learnapp.com,88,100,92
+Piyush Vaid,Graphics,Piyush@learnapp.com,100,88,92
+Pranchal Chaudhary,Graphics,pranchal@learnapp.com,75,50,63
+Priyanshu Kumar,Content 2,priyanshu.kumar@learnapp.com,63,100,75
+Pulkit Lalwani,Content 2,pulkit@learnapp.com,75,75,75
+Rahul,Sound,rahul@learnapp.com,50,100,75
+Raj,Graphics,raj@learnapp.com,25,50,38
+Rakhi Dhama,Graphics,rakhi.dhama@learnapp.com,100,100,100
+Rishabh Bangwal,Editing 2,Rishabh@learnapp.com,100,100,100
+Rohit Sondhi,Social,rohit@learnapp.com,0,0,0
+Sahil Mathur,Content 1,sahil.mathur@learnapp.com,100,100,100
+Satyam Gupta,Social,satyam@learnapp.com,100,100,100
+Satyavrat Sharma,Zerodha Online,satyavrat.sharma@learnapp.com,75,100,88
+Shreya Sarawagi,Graphics,shreya@learnapp.com,100,100,100
+Shuchita Kumar,Content 1,shuchita.kumar@learnapp.com,100,100,100
+Siya Khanna,Social,siya.khanna@learnapp.com,100,100,100
+Supriya CK,Technology,supriya@learnapp.com,100,100,100
+Swati Juyal,Zerodha Online,swatijuyal@learnapp.com,75,100,88
+Tanya Khanna,Social,tanya.khanna@learnapp.com,0,0,0
+Tilak Mahawar,Technology,tilak.mahawar@learnapp.com,100,100,100
+Tushar Kumar,Technology,tushar.kumar@learnapp.com,100,100,100
+Vaibhav Singhal,Graphics,vaibhav@learnapp.com,75,75,75
+Vaishnavi Mishra,Product,vaishnavi.mishra@learnapp.com,75,100,88
+Vandit Rai,Pre-production,vandit@learnapp.com,75,0,38
+Vikas Kumar,Varsity,Vikas.kumar@learnapp.com,75,75,75
