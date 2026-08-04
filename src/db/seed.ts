@@ -3,8 +3,8 @@ import pkg from 'pg';
 const { Pool } = pkg;
 import * as dotenv from 'dotenv';
 import * as crypto from 'crypto';
-import { profiles, incentiveCycles, goals } from './schema.ts';
-import { and, eq, ilike } from 'drizzle-orm';
+import { profiles, incentiveCycles, goals, cheers } from './schema.ts';
+import { and, eq, ilike, isNull } from 'drizzle-orm';
 
 const FRESH_RESET = process.argv.includes('--fresh');
 const REMOVED_EMAILS = [
@@ -736,6 +736,23 @@ async function runSeed() {
       reviewDeadline: '2026-08-31',
       status: 'Active',
     });
+
+    const [julyCycle] = await db
+      .select({ id: incentiveCycles.id })
+      .from(incentiveCycles)
+      .where(and(eq(incentiveCycles.month, 7), eq(incentiveCycles.year, currentYear)))
+      .limit(1);
+
+    if (julyCycle) {
+      const backfilled = await db
+        .update(cheers)
+        .set({ cycleId: julyCycle.id })
+        .where(isNull(cheers.cycleId))
+        .returning({ id: cheers.id });
+      if (backfilled.length > 0) {
+        console.log(`Assigned ${backfilled.length} existing cheers to July 2026 cycle.`);
+      }
+    }
 
     // 3. Remove employees no longer on the roster (goals cascade-delete with profile)
     for (const email of REMOVED_EMAILS) {

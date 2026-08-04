@@ -49,6 +49,7 @@ export const incentiveCycles = pgTable("incentive_cycles", {
 export const incentiveCyclesRelations = relations(incentiveCycles, ({ many }) => ({
   goals: many(goals),
   decisions: many(incentiveDecisions),
+  cheers: many(cheers),
 }));
 
 export const goals = pgTable("goals", {
@@ -176,12 +177,17 @@ export const incentiveDecisionsRelations = relations(incentiveDecisions, ({ one 
 
 export const cheers = pgTable("cheers", {
   id: uuid("id").primaryKey().defaultRandom(),
+  cycleId: uuid("cycle_id").references(() => incentiveCycles.id, { onDelete: "cascade" }),
   giverId: text("giver_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
   receiverId: text("receiver_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const cheersRelations = relations(cheers, ({ one }) => ({
+  cycle: one(incentiveCycles, {
+    fields: [cheers.cycleId],
+    references: [incentiveCycles.id],
+  }),
   giver: one(profiles, {
     fields: [cheers.giverId],
     references: [profiles.id],

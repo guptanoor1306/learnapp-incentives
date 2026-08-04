@@ -15,7 +15,7 @@ import {
 
 const PROOF_SUMMARY_SELECT = 'id,goal_id,uploaded_by,file_name,file_type,file_size,note,created_at,storage_path';
 const PROOF_MEDIA_SELECT = 'id,external_url';
-const CHEER_SUMMARY_SELECT = 'id,giver_id,receiver_id,created_at';
+const CHEER_SUMMARY_SELECT = 'id,cycle_id,giver_id,receiver_id,created_at';
 
 const isWebUrl = (proof?: Proof | null): boolean => {
   if (!proof || !proof.external_url) return false;
@@ -288,18 +288,40 @@ export default function MyGoals() {
     setSelectedPreviewProof(proof);
   };
 
+  const fetchCheers = useCallback(async (cycleId: string) => {
+    if (!cycleId) {
+      setAllCheers([]);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('cheers')
+        .select(CHEER_SUMMARY_SELECT)
+        .eq('cycle_id', cycleId);
+
+      if (!error && data) {
+        setAllCheers(data);
+      } else {
+        setAllCheers([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch cheers:', err);
+      setAllCheers([]);
+    }
+  }, []);
+
   const initApp = async () => {
     setLoading(true);
     setErrorMsg('');
     try {
-      const [profilesRes, cyclesRes, cheersRes] = await Promise.all([
+      const [profilesRes, cyclesRes] = await Promise.all([
         supabase.from('profiles').select('*').order('full_name', { ascending: true }),
         supabase
           .from('incentive_cycles')
           .select('*')
           .order('year', { ascending: false })
           .order('month', { ascending: false }),
-        supabase.from('cheers').select(CHEER_SUMMARY_SELECT),
       ]);
 
       if (profilesRes.error) throw profilesRes.error;
@@ -309,9 +331,6 @@ export default function MyGoals() {
       const cyclesData = cyclesRes.data || [];
       setProfilesList(loadedProfiles);
       setCycles(cyclesData);
-      if (!cheersRes.error && cheersRes.data) {
-        setAllCheers(cheersRes.data);
-      }
 
       if (cyclesData.length > 0) {
         const activeCycle = cyclesData.find((c) => c.status === 'Active') || cyclesData[0];
@@ -380,6 +399,11 @@ export default function MyGoals() {
     if (!selectedCycleId || profilesList.length === 0) return;
     fetchGoalsAndProofs(selectedCycleId, profilesList);
   }, [selectedCycleId, profilesList.length]);
+
+  useEffect(() => {
+    if (!selectedCycleId) return;
+    fetchCheers(selectedCycleId);
+  }, [selectedCycleId, fetchCheers]);
 
   useEffect(() => {
     if (!expandedEmployeeId) return;
@@ -867,6 +891,7 @@ export default function MyGoals() {
 
   const handleCheerEmployee = async (receiverId: string) => {
     if (cheeringReceiverId) return;
+    if (!selectedCycleId) return;
 
     const sessionProfile = resolveSessionProfile(profilesList);
     if (!sessionProfile) {
@@ -877,7 +902,10 @@ export default function MyGoals() {
     setCheeringReceiverId(receiverId);
 
     const existingCheer = allCheers.find(
-      (c) => c.giver_id === sessionProfile.id && c.receiver_id === receiverId
+      (c) =>
+        c.cycle_id === selectedCycleId &&
+        c.giver_id === sessionProfile.id &&
+        c.receiver_id === receiverId
     );
     let optimisticId: string | null = null;
 
@@ -892,6 +920,7 @@ export default function MyGoals() {
       optimisticId = `optimistic-${Date.now()}`;
       const optimisticCheer = {
         id: optimisticId,
+        cycle_id: selectedCycleId,
         giver_id: sessionProfile.id,
         receiver_id: receiverId,
         created_at: new Date().toISOString(),
@@ -899,6 +928,7 @@ export default function MyGoals() {
       setAllCheers((prev) => [...prev, optimisticCheer]);
 
       const { data, error } = await supabase.from('cheers').insert({
+        cycle_id: selectedCycleId,
         giver_id: sessionProfile.id,
         receiver_id: receiverId,
         created_at: optimisticCheer.created_at,
