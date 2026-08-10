@@ -156,6 +156,7 @@ export default function MyGoals() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'leaderboard' | 'workspace'>('leaderboard');
   const [loading, setLoading] = useState(true);
+  const [rosterLoaded, setRosterLoaded] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -331,12 +332,14 @@ export default function MyGoals() {
       const cyclesData = cyclesRes.data || [];
       setProfilesList(loadedProfiles);
       setCycles(cyclesData);
+      setRosterLoaded(loadedProfiles.length > 0);
 
       if (cyclesData.length > 0) {
         const activeCycle = cyclesData.find((c) => c.status === 'Active') || cyclesData[0];
         setSelectedCycleId(activeCycle.id);
       }
     } catch (err: any) {
+      setRosterLoaded(false);
       setErrorMsg(`Initialization Error: ${err.message}`);
     } finally {
       setLoading(false);
@@ -956,6 +959,11 @@ export default function MyGoals() {
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!rosterLoaded) {
+      setLoginError('Employee roster did not load. The server returned an error — please refresh or try again in a minute.');
+      return;
+    }
+
     const normalized = loginEmail.trim().toLowerCase();
     const found = profilesList.find(p => p.email.toLowerCase() === normalized);
 

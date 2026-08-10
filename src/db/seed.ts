@@ -5,6 +5,7 @@ import * as dotenv from 'dotenv';
 import * as crypto from 'crypto';
 import { profiles, incentiveCycles, goals, cheers } from './schema.ts';
 import { and, eq, ilike, isNull } from 'drizzle-orm';
+import { getPoolConfig } from './poolConfig.ts';
 
 const FRESH_RESET = process.argv.includes('--fresh');
 const REMOVED_EMAILS = [
@@ -14,22 +15,7 @@ const REMOVED_EMAILS = [
 
 dotenv.config();
 
-function createSeedPool() {
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    throw new Error('DATABASE_URL is required.');
-  }
-  return new Pool({
-    connectionString: url,
-    ssl: url.includes('railway.app') || process.env.PGSSL === 'true'
-      ? { rejectUnauthorized: false }
-      : undefined,
-    connectionTimeoutMillis: 15000,
-  });
-}
-
-// Setup Database Connection Pool
-const pool = createSeedPool();
+const pool = new Pool(getPoolConfig());
 
 const db = drizzle(pool);
 

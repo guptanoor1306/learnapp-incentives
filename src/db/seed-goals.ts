@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import { and, eq } from 'drizzle-orm';
 import { profiles, incentiveCycles, goals } from './schema.ts';
+import { getPoolConfig } from './poolConfig.ts';
 
 dotenv.config();
 
@@ -19,20 +20,8 @@ interface JulyGoalRow {
   description: string;
 }
 
-function createPool() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error('DATABASE_URL is required.');
-  return new Pool({
-    connectionString: url,
-    ssl: url.includes('railway.app') || process.env.PGSSL === 'true'
-      ? { rejectUnauthorized: false }
-      : undefined,
-    connectionTimeoutMillis: 15000,
-  });
-}
-
 async function seedJulyGoals() {
-  const pool = createPool();
+  const pool = new Pool(getPoolConfig());
   const db = drizzle(pool);
   const jsonPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'july-goals.json');
   const julyGoals: JulyGoalRow[] = JSON.parse(readFileSync(jsonPath, 'utf-8'));
