@@ -11,6 +11,7 @@ const FRESH_RESET = process.argv.includes('--fresh');
 const REMOVED_EMAILS = [
   'aayush.srivastava@learnapp.com',
   'pratik@learnapp.com',
+  'amardeep@learnapp.com',
 ];
 
 dotenv.config();
@@ -400,15 +401,6 @@ async function runSeed() {
     const amanDId = await createOrUpdateUser({
       fullName: 'Aman Deep',
       email: 'aman@learnapp.com',
-      jobTitle: '',
-      department: 'Sound',
-      role: 'employee',
-      managerEmail: 'Bhavya.menon@learnapp.com',
-    });
-
-    const amardeepSId = await createOrUpdateUser({
-      fullName: 'Amardeep Singh',
-      email: 'amardeep@learnapp.com',
       jobTitle: '',
       department: 'Sound',
       role: 'employee',
