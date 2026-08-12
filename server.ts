@@ -15,7 +15,7 @@ import {
   incentiveDecisions,
   cheers
 } from './src/db/schema.ts';
-import { isCycleLocked } from './src/cycleLock.ts';
+import { isCycleLocked, isAugust2026Cycle } from './src/cycleLock.ts';
 import { isAugust2026EligibleEmail } from './src/augustEligibility.ts';
 
 dotenv.config();
@@ -143,28 +143,81 @@ async function getCycleById(cycleId: string) {
   return cycle || null;
 }
 
-async function isLockedGoalId(goalId: string) {
+const AUGUST_PROGRESS_ONLY_FIELDS = new Set([
+  'progressPercentage',
+  'successCriteria',
+  'status',
+  'updatedAt',
+]);
+
+async function getGoalContext(goalId: string) {
   const [goal] = await db
-    .select({ cycleId: goals.cycleId })
+    .select({ cycleId: goals.cycleId, employeeId: goals.employeeId })
     .from(goals)
     .where(eq(goals.id, goalId))
     .limit(1);
-  if (!goal) return false;
+  if (!goal) return null;
   const cycle = await getCycleById(goal.cycleId);
-  return isCycleLocked(cycle);
+  return { goal, cycle };
 }
 
-async function assertGoalMutationAllowed(goalId: string) {
+async function isLockedGoalId(goalId: string) {
+  const context = await getGoalContext(goalId);
+  if (!context?.cycle) return false;
+  return isCycleLocked(context.cycle);
+}
+
+async function assertGoalProgressAllowed(goalId: string) {
   if (await isLockedGoalId(goalId)) {
     throw new Error('July 2026 is locked. Progress and goal edits are no longer allowed.');
   }
   await assertGoalEmployeeAllowed(goalId);
 }
 
+async function assertGoalUpdateAllowed(goalId: string, updateData: Record<string, unknown>) {
+  if (await isLockedGoalId(goalId)) {
+    throw new Error('July 2026 is locked. Progress and goal edits are no longer allowed.');
+  }
+  await assertGoalEmployeeAllowed(goalId);
+
+  const context = await getGoalContext(goalId);
+  if (!context?.cycle || !isAugust2026Cycle(context.cycle)) return;
+
+  const updateKeys = Object.keys(updateData).filter((key) => updateData[key] !== undefined);
+  const disallowedKeys = updateKeys.filter((key) => !AUGUST_PROGRESS_ONLY_FIELDS.has(key));
+  if (disallowedKeys.length > 0) {
+    throw new Error('August goals are locked. Only progress can be updated.');
+  }
+}
+
+async function assertGoalDeleteAllowed(goalId: string) {
+  if (await isLockedGoalId(goalId)) {
+    throw new Error('July 2026 is locked. Progress and goal edits are no longer allowed.');
+  }
+
+  const context = await getGoalContext(goalId);
+  if (context?.cycle && isAugust2026Cycle(context.cycle)) {
+    throw new Error('August goals are locked. Goals cannot be deleted.');
+  }
+
+  await assertGoalEmployeeAllowed(goalId);
+}
+
+async function assertGoalMutationAllowed(goalId: string, updateData?: Record<string, unknown>) {
+  if (updateData) {
+    await assertGoalUpdateAllowed(goalId, updateData);
+    return;
+  }
+  await assertGoalProgressAllowed(goalId);
+}
+
 async function assertCycleMutationAllowed(cycleId: string) {
   const cycle = await getCycleById(cycleId);
   if (isCycleLocked(cycle)) {
     throw new Error('July 2026 is locked. Progress and goal edits are no longer allowed.');
+  }
+  if (isAugust2026Cycle(cycle)) {
+    throw new Error('August goals are locked. New goals cannot be added.');
   }
 }
 
@@ -264,7 +317,7 @@ app.post('/api/db', async (req, res) => {
       }
 
       if (table === 'proofs' && camelData.goalId) {
-        await assertGoalMutationAllowed(camelData.goalId);
+        await assertGoalProgressAllowed(camelData.goalId);
       }
 
       const results = await db.insert(tableObj).values(camelData).returning() as any[];
@@ -276,7 +329,7 @@ app.post('/api/db', async (req, res) => {
       if (table === 'goals') {
         const goalIdFilter = filters.find((f: any) => f.col === 'id' && f.op === 'eq')?.val;
         if (goalIdFilter) {
-          await assertGoalMutationAllowed(goalIdFilter);
+          await assertGoalUpdateAllowed(goalIdFilter, camelData);
         }
       }
 
@@ -294,7 +347,7 @@ app.post('/api/db', async (req, res) => {
       if (table === 'goals') {
         const goalIdFilter = filters.find((f: any) => f.col === 'id' && f.op === 'eq')?.val;
         if (goalIdFilter) {
-          await assertGoalMutationAllowed(goalIdFilter);
+          await assertGoalDeleteAllowed(goalIdFilter);
         }
       }
 
@@ -307,7 +360,11 @@ app.post('/api/db', async (req, res) => {
             .where(eq(proofs.id, proofIdFilter))
             .limit(1);
           if (proof) {
-            await assertGoalMutationAllowed(proof.goalId);
+            const context = await getGoalContext(proof.goalId);
+            if (context?.cycle && isAugust2026Cycle(context.cycle)) {
+              throw new Error('August proofs are locked and cannot be deleted.');
+            }
+            await assertGoalProgressAllowed(proof.goalId);
           }
         }
       }

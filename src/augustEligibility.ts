@@ -1,4 +1,8 @@
-/** August 2026 incentive participants: submitted ≥1 goal by 6 Aug EOD IST, minus Chandan (no business goal). */
+import { isAugust2026Cycle } from './cycleLock.ts';
+
+export { isAugust2026Cycle };
+
+/** August 2026 incentive participants: submitted ≥1 goal by 6 Aug EOD IST, minus Chandan (no business goal) and Dheeraj. */
 export const AUGUST_2026_ELIGIBLE_EMAILS = new Set(
   [
     'abhishek.sharma@learnapp.com',
@@ -14,7 +18,6 @@ export const AUGUST_2026_ELIGIBLE_EMAILS = new Set(
     'ashutosh.kaushik@learnapp.com',
     'bhavya.oberoi@learnapp.com',
     'deepak.kumar@learnapp.com',
-    'dheeraj.rajvania@learnapp.com',
     'harish@learnapp.com',
     'harshita.varshney@learnapp.com',
     'ishika.badal@learnapp.com',
@@ -38,12 +41,6 @@ export const AUGUST_2026_ELIGIBLE_EMAILS = new Set(
     'vaishnavi.mishra@learnapp.com',
   ].map((e) => e.toLowerCase())
 );
-
-export function isAugust2026Cycle(
-  cycle: { month: number; year: number } | null | undefined
-): boolean {
-  return !!cycle && cycle.month === 8 && cycle.year === 2026;
-}
 
 export function isAugust2026EligibleEmail(email: string | null | undefined): boolean {
   if (!email) return false;
