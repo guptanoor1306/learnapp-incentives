@@ -646,7 +646,7 @@ export default function MyGoals() {
   };
 
   const handleDeleteProof = (proofId: string, e?: React.MouseEvent) => {
-    if (!ensureGoalContentEditable()) return;
+    if (!ensureProgressEditable()) return;
     if (e) e.stopPropagation();
     setProofToDelete(proofId);
   };
@@ -1018,7 +1018,6 @@ export default function MyGoals() {
   };
 
   const canDeleteProof = (proof: Proof, goalEmployeeId?: string) => {
-    if (isAugustGoalContentLocked) return false;
     const sessionProfile = resolveSessionProfile(profilesList);
     if (!sessionProfile) return false;
     if (sessionProfile.role === 'admin') return true;
@@ -1333,15 +1332,6 @@ export default function MyGoals() {
             <span>
               {getCycleDisplayName(selectedCycle?.name || 'This cycle')} is locked. Progress, proofs, and goal edits are read-only.
               {selectedCycle && isJuly2026Cycle(selectedCycle) ? ' Use the July CSV button in the header to download final progress.' : ''}
-            </span>
-          </div>
-        )}
-
-        {isAugustGoalContentLocked && isLoggedInEligibleForCycle && !isSelectedCycleLocked && (
-          <div className="mb-6 p-4 bg-amber-950/20 border border-amber-500/30 text-amber-200 text-sm rounded-xl flex items-center gap-3 font-sans">
-            <Lock className="w-4 h-4 shrink-0 text-amber-400" />
-            <span>
-              August goals are locked. Your submitted goals are final — you can only update progress and upload proofs.
             </span>
           </div>
         )}
@@ -1816,6 +1806,15 @@ export default function MyGoals() {
         {/* ------------------------------------------------------------- */}
         {viewMode === 'workspace' && loggedInProfile && (
           <div className="space-y-6 animate-in fade-in duration-200">
+
+              {isAugustGoalContentLocked && isLoggedInEligibleForCycle && !isSelectedCycleLocked && (
+                <div className="p-4 bg-amber-950/20 border border-amber-500/30 text-amber-200 text-sm rounded-xl flex items-center gap-3 font-sans">
+                  <Lock className="w-4 h-4 shrink-0 text-amber-400" />
+                  <span>
+                    August goals are locked. Your submitted goals are final — you can only update progress and upload proofs.
+                  </span>
+                </div>
+              )}
               
               {/* My Workspace Header */}
               <div className="bg-[#0e0e14] border border-zinc-900 p-6 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 shadow-xl">

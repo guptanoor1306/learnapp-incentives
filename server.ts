@@ -360,10 +360,6 @@ app.post('/api/db', async (req, res) => {
             .where(eq(proofs.id, proofIdFilter))
             .limit(1);
           if (proof) {
-            const context = await getGoalContext(proof.goalId);
-            if (context?.cycle && isAugust2026Cycle(context.cycle)) {
-              throw new Error('August proofs are locked and cannot be deleted.');
-            }
             await assertGoalProgressAllowed(proof.goalId);
           }
         }
