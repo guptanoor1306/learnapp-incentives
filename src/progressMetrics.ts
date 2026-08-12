@@ -11,16 +11,24 @@ export function averageGoalTypeProgress(goals: GoalProgressInput[], type: 'busin
   );
 }
 
+/** Business and personal each contribute half of total progress (by type average, not goal count). */
+export function calculateGoalTypeContributions(goals: GoalProgressInput[]) {
+  const businessPct = averageGoalTypeProgress(goals, 'business');
+  const personalPct = averageGoalTypeProgress(goals, 'personal');
+  const businessContrib = businessPct * 0.5;
+  const personalContrib = personalPct * 0.5;
+
+  return {
+    businessPct,
+    personalPct,
+    businessContrib,
+    personalContrib,
+    finalPct: Math.round(businessContrib + personalContrib),
+  };
+}
+
 /** Same formula as the leaderboard progress bar percentage on the tool. */
 export function calculateLeaderboardProgress(goals: GoalProgressInput[]) {
   if (goals.length === 0) return 0;
-
-  const businessGoals = goals.filter((goal) => goal.goalType === 'business');
-  const personalGoals = goals.filter((goal) => goal.goalType === 'personal');
-  const businessContrib =
-    businessGoals.reduce((sum, goal) => sum + goal.progressPercentage, 0) / goals.length;
-  const personalContrib =
-    personalGoals.reduce((sum, goal) => sum + goal.progressPercentage, 0) / goals.length;
-
-  return Math.round(businessContrib + personalContrib);
+  return calculateGoalTypeContributions(goals).finalPct;
 }

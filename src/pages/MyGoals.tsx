@@ -11,6 +11,7 @@ import {
 } from '../augustEligibility';
 import {
   averageGoalTypeProgress,
+  calculateGoalTypeContributions,
   calculateLeaderboardProgress,
 } from '../progressMetrics';
 import { 
@@ -1094,29 +1095,20 @@ export default function MyGoals() {
   // Calculate average progress and gamified stamps for each profile, sorting by total stamps
   const sortedLeaderboard = [...filteredProfiles].map(p => {
     const pGoals = cycleGoals.filter(g => g.employee_id === p.id);
-    
-    // Business Goals Progress (0-100)
-    const bGoals = pGoals.filter(g => g.goal_type === 'business');
-    const bProgress = bGoals.length > 0 ? bGoals.reduce((sum, g) => sum + g.progress_percentage, 0) / bGoals.length : 0;
-    
-    // Personal Goals Progress (0-100)
-    const persGoals = pGoals.filter(g => g.goal_type === 'personal');
-    const pProgress = persGoals.length > 0 ? persGoals.reduce((sum, g) => sum + g.progress_percentage, 0) / persGoals.length : 0;
-
-    // Relative contribution to total progress based on total goals count
-    const businessContrib = pGoals.length > 0 
-      ? (bGoals.reduce((sum, g) => sum + g.progress_percentage, 0) / pGoals.length) 
-      : 0;
-
-    const personalContrib = pGoals.length > 0 
-      ? (persGoals.reduce((sum, g) => sum + g.progress_percentage, 0) / pGoals.length) 
-      : 0;
+    const goalInputs = pGoals.map((g) => ({
+      goalType: g.goal_type,
+      progressPercentage: g.progress_percentage,
+    }));
+    const { businessPct, personalPct, businessContrib, personalContrib, finalPct } =
+      calculateGoalTypeContributions(goalInputs);
+    const bProgress = businessPct;
+    const pProgress = personalPct;
 
     // Proofs Uploaded Progress (0-100)
     const proofPct = pGoals.length > 0 ? (pGoals.filter(g => proofsMap[g.id] && proofsMap[g.id].length > 0).length / pGoals.length) * 100 : 0;
     const proofContrib = 0;
 
-    const calculatedProgress = Math.round(businessContrib + personalContrib);
+    const calculatedProgress = finalPct;
 
     // Stamps (We can keep them as a visual score on the right)
     const businessStamps = (bProgress / 100) * 5;
