@@ -6,6 +6,10 @@ import {
 import { Profile, IncentiveCycle, Goal, Proof } from '../types';
 import { isCycleLocked, isJuly2026Cycle } from '../cycleLock';
 import {
+  isAugust2026Cycle,
+  isAugust2026EligibleProfile,
+} from '../augustEligibility';
+import {
   averageGoalTypeProgress,
   calculateLeaderboardProgress,
 } from '../progressMetrics';
@@ -453,6 +457,15 @@ export default function MyGoals() {
 
   const selectedCycle = cycles.find((c) => c.id === selectedCycleId) || null;
   const isSelectedCycleLocked = isCycleLocked(selectedCycle);
+  const isAugustCycle = isAugust2026Cycle(selectedCycle);
+  const isProfileEligible = (profile: Profile | null | undefined) =>
+    isAugust2026EligibleProfile(profile, selectedCycle);
+  const cycleGoals = isAugustCycle
+    ? allGoals.filter((g) => {
+        const owner = profilesList.find((p) => p.id === g.employee_id);
+        return isAugust2026EligibleProfile(owner, selectedCycle);
+      })
+    : allGoals;
 
   const ensureCycleEditable = () => {
     if (isSelectedCycleLocked) {
@@ -1008,8 +1021,9 @@ export default function MyGoals() {
     };
 
     const rows = profilesList
+      .filter((profile) => !isAugustCycle || isProfileEligible(profile))
       .map((profile) => {
-        const pGoals = allGoals.filter((g) => g.employee_id === profile.id);
+        const pGoals = cycleGoals.filter((g) => g.employee_id === profile.id);
         const goalInputs = pGoals.map((g) => ({
           goalType: g.goal_type,
           progressPercentage: g.progress_percentage,
@@ -1055,9 +1069,10 @@ export default function MyGoals() {
 
   // Filter profiles based on selected department, no goals filter, and text search
   const filteredProfiles = profilesList.filter(p => {
+    if (isAugustCycle && !isProfileEligible(p)) return false;
     if (selectedDepartment !== 'All' && p.department !== selectedDepartment) return false;
     
-    const pGoals = allGoals.filter(g => g.employee_id === p.id);
+    const pGoals = cycleGoals.filter(g => g.employee_id === p.id);
     if (showNoGoalsOnly && pGoals.length > 0) return false;
 
     if (searchQuery.trim()) {
@@ -1070,14 +1085,15 @@ export default function MyGoals() {
   });
 
   const noGoalsCount = profilesList.filter(p => {
+    if (isAugustCycle && !isProfileEligible(p)) return false;
     if (selectedDepartment !== 'All' && p.department !== selectedDepartment) return false;
-    const pGoals = allGoals.filter(g => g.employee_id === p.id);
+    const pGoals = cycleGoals.filter(g => g.employee_id === p.id);
     return pGoals.length === 0;
   }).length;
 
   // Calculate average progress and gamified stamps for each profile, sorting by total stamps
   const sortedLeaderboard = [...filteredProfiles].map(p => {
-    const pGoals = allGoals.filter(g => g.employee_id === p.id);
+    const pGoals = cycleGoals.filter(g => g.employee_id === p.id);
     
     // Business Goals Progress (0-100)
     const bGoals = pGoals.filter(g => g.goal_type === 'business');
@@ -1142,9 +1158,10 @@ export default function MyGoals() {
   const loggedInProfile = resolveSessionProfile(profilesList);
   const sessionUserId = loggedInProfile?.id || '';
   const workspaceGoals = sessionUserId
-    ? allGoals.filter((g) => g.employee_id === sessionUserId)
+    ? cycleGoals.filter((g) => g.employee_id === sessionUserId)
     : [];
-  const canEditGoals = !!loggedInProfile && !isSelectedCycleLocked;
+  const isLoggedInEligibleForCycle = isProfileEligible(loggedInProfile);
+  const canEditGoals = !!loggedInProfile && !isSelectedCycleLocked && isLoggedInEligibleForCycle;
 
   if (loading && profilesList.length === 0) {
     return (
@@ -2048,6 +2065,13 @@ export default function MyGoals() {
                     </div>
                   );
                 })}
+              </div>
+            ) : isAugustCycle && !isLoggedInEligibleForCycle ? (
+              <div className="py-12 text-center bg-zinc-950/20 rounded-xl border border-dashed border-zinc-900 space-y-2">
+                <p className="text-xs font-mono text-amber-400 uppercase font-bold">Not eligible for August 2026</p>
+                <p className="text-[10px] text-zinc-500 max-w-md mx-auto">
+                  Goals were not submitted by the 6 August deadline, or required business goals were not added.
+                </p>
               </div>
             ) : (
               <div className="py-12 text-center bg-zinc-950/20 rounded-xl border border-dashed border-zinc-900">

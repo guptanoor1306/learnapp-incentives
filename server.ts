@@ -16,6 +16,7 @@ import {
   cheers
 } from './src/db/schema.ts';
 import { isCycleLocked } from './src/cycleLock.ts';
+import { isAugust2026EligibleEmail } from './src/augustEligibility.ts';
 
 dotenv.config();
 
@@ -157,6 +158,7 @@ async function assertGoalMutationAllowed(goalId: string) {
   if (await isLockedGoalId(goalId)) {
     throw new Error('July 2026 is locked. Progress and goal edits are no longer allowed.');
   }
+  await assertGoalEmployeeAllowed(goalId);
 }
 
 async function assertCycleMutationAllowed(cycleId: string) {
@@ -164,6 +166,32 @@ async function assertCycleMutationAllowed(cycleId: string) {
   if (isCycleLocked(cycle)) {
     throw new Error('July 2026 is locked. Progress and goal edits are no longer allowed.');
   }
+}
+
+async function assertAugustGoalEmployeeAllowed(cycleId: string, employeeId: string) {
+  const cycle = await getCycleById(cycleId);
+  if (!cycle || cycle.month !== 8 || cycle.year !== 2026) return;
+
+  const [profile] = await db
+    .select({ email: profiles.email })
+    .from(profiles)
+    .where(eq(profiles.id, employeeId))
+    .limit(1);
+
+  if (!profile || !isAugust2026EligibleEmail(profile.email)) {
+    throw new Error('You are not eligible for the August 2026 incentive cycle.');
+  }
+}
+
+async function assertGoalEmployeeAllowed(goalId: string) {
+  const [goal] = await db
+    .select({ cycleId: goals.cycleId, employeeId: goals.employeeId })
+    .from(goals)
+    .where(eq(goals.id, goalId))
+    .limit(1);
+
+  if (!goal) return;
+  await assertAugustGoalEmployeeAllowed(goal.cycleId, goal.employeeId);
 }
 
 // 1. GENERIC API DATABASE PROXY ROUTE
@@ -230,6 +258,9 @@ app.post('/api/db', async (req, res) => {
 
       if (table === 'goals' && camelData.cycleId) {
         await assertCycleMutationAllowed(camelData.cycleId);
+        if (camelData.employeeId) {
+          await assertAugustGoalEmployeeAllowed(camelData.cycleId, camelData.employeeId);
+        }
       }
 
       if (table === 'proofs' && camelData.goalId) {
