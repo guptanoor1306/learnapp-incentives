@@ -340,7 +340,10 @@ export default function MyGoals() {
       setRosterLoaded(loadedProfiles.length > 0);
 
       if (cyclesData.length > 0) {
-        const activeCycle = cyclesData.find((c) => c.status === 'Active') || cyclesData[0];
+        const activeCycle =
+          cyclesData.find((c) => c.status === 'Active') ||
+          cyclesData.find((c) => c.status !== 'Draft') ||
+          cyclesData[0];
         setSelectedCycleId(activeCycle.id);
       }
     } catch (err: any) {
@@ -1037,7 +1040,6 @@ export default function MyGoals() {
     };
 
     const rows = profilesList
-      .filter((profile) => !isAugustCycle || isProfileEligible(profile))
       .map((profile) => {
         const pGoals = cycleGoals.filter((g) => g.employee_id === profile.id);
         const goalInputs = pGoals.map((g) => ({
@@ -1085,7 +1087,6 @@ export default function MyGoals() {
 
   // Filter profiles based on selected department, no goals filter, and text search
   const filteredProfiles = profilesList.filter(p => {
-    if (isAugustCycle && !isProfileEligible(p)) return false;
     if (selectedDepartment !== 'All' && p.department !== selectedDepartment) return false;
     
     const pGoals = cycleGoals.filter(g => g.employee_id === p.id);
@@ -1101,7 +1102,6 @@ export default function MyGoals() {
   });
 
   const noGoalsCount = profilesList.filter(p => {
-    if (isAugustCycle && !isProfileEligible(p)) return false;
     if (selectedDepartment !== 'All' && p.department !== selectedDepartment) return false;
     const pGoals = cycleGoals.filter(g => g.employee_id === p.id);
     return pGoals.length === 0;
@@ -1269,7 +1269,8 @@ export default function MyGoals() {
               >
                 {cycles.map((c) => (
                   <option key={c.id} value={c.id} className="bg-[#0e0e12] text-white">
-                    {getCycleDisplayName(c.name)}{isCycleLocked(c) ? ' (Locked)' : isAugust2026GoalContentLocked(c) ? ' (Goals locked)' : ''}
+                    {getCycleDisplayName(c.name)}
+                    {isCycleLocked(c) ? ' (Locked)' : isAugust2026GoalContentLocked(c) ? ' (Goals locked)' : c.status === 'Draft' ? ' (Draft)' : ''}
                   </option>
                 ))}
               </select>

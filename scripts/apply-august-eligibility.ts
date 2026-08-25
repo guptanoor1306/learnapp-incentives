@@ -23,9 +23,9 @@ async function applyAugustEligibility() {
     (p) => !AUGUST_2026_ELIGIBLE_EMAILS.has(p.email.toLowerCase())
   );
 
-  if (eligibleProfiles.length !== 35) {
+  if (eligibleProfiles.length !== 34) {
     console.warn(
-      `Expected 35 eligible profiles, matched ${eligibleProfiles.length}. Check email casing in roster.`
+      `Expected 34 eligible profiles, matched ${eligibleProfiles.length}. Check email casing in roster.`
     );
   }
 

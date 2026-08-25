@@ -578,9 +578,9 @@ async function runSeed() {
       fullName: 'Anish Mohan',
       email: 'anish@learnapp.com',
       jobTitle: '',
-      department: 'Social',
+      department: 'Zerodha Online',
       role: 'employee',
-      managerEmail: 'tanya.khanna@learnapp.com',
+      managerEmail: 'anjali@learnapp.com',
     });
 
     const khushiNId = await createOrUpdateUser({
@@ -596,9 +596,9 @@ async function runSeed() {
       fullName: 'Rohit Sondhi',
       email: 'rohit@learnapp.com',
       jobTitle: '',
-      department: 'Social',
+      department: 'Zerodha Online',
       role: 'employee',
-      managerEmail: 'tanya.khanna@learnapp.com',
+      managerEmail: 'anjali@learnapp.com',
     });
 
     const satyamGId = await createOrUpdateUser({
@@ -657,8 +657,8 @@ async function runSeed() {
       managerEmail: 'noor@learnapp.com',
     });
 
-    // 2. Ensure July and August 2026 cycles exist
-    console.log('Ensuring July and August 2026 cycles...');
+    // 2. Ensure July, August, and September 2026 cycles exist
+    console.log('Ensuring July, August, and September 2026 cycles...');
     const currentYear = 2026;
 
     async function ensureCycle(data: {
@@ -715,6 +715,18 @@ async function runSeed() {
       status: 'Active',
     });
 
+    await ensureCycle({
+      name: 'September 2026 Cycle',
+      month: 9,
+      year: currentYear,
+      startDate: '2026-09-01',
+      endDate: '2026-09-30',
+      goalSubmissionDeadline: '2026-09-10',
+      proofSubmissionDeadline: '2026-09-28',
+      reviewDeadline: '2026-09-30',
+      status: 'Draft',
+    });
+
     const [julyCycle] = await db
       .select({ id: incentiveCycles.id })
       .from(incentiveCycles)
@@ -752,8 +764,9 @@ async function runSeed() {
     console.log('\n=========================================');
     console.log('DATABASE AND CYCLE SEEDING COMPLETE!');
     console.log('Seeded Monthly Cycles:');
-    console.log('1. July 2026 Cycle   - Closed');
-    console.log('2. August 2026 Cycle - Active');
+    console.log('1. July 2026 Cycle      - Closed');
+    console.log('2. August 2026 Cycle   - Active');
+    console.log('3. September 2026 Cycle - Draft');
     console.log('=========================================\n');
 
   } catch (err) {
