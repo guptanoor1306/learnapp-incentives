@@ -1040,6 +1040,7 @@ export default function MyGoals() {
     };
 
     const rows = profilesList
+      .filter((profile) => !isAugustCycle || isProfileEligible(profile))
       .map((profile) => {
         const pGoals = cycleGoals.filter((g) => g.employee_id === profile.id);
         const goalInputs = pGoals.map((g) => ({
@@ -1087,6 +1088,7 @@ export default function MyGoals() {
 
   // Filter profiles based on selected department, no goals filter, and text search
   const filteredProfiles = profilesList.filter(p => {
+    if (isAugustCycle && !isProfileEligible(p)) return false;
     if (selectedDepartment !== 'All' && p.department !== selectedDepartment) return false;
     
     const pGoals = cycleGoals.filter(g => g.employee_id === p.id);
@@ -1102,6 +1104,7 @@ export default function MyGoals() {
   });
 
   const noGoalsCount = profilesList.filter(p => {
+    if (isAugustCycle && !isProfileEligible(p)) return false;
     if (selectedDepartment !== 'All' && p.department !== selectedDepartment) return false;
     const pGoals = cycleGoals.filter(g => g.employee_id === p.id);
     return pGoals.length === 0;
