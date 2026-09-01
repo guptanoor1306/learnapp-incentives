@@ -4,7 +4,7 @@ import {
   Flame, Plus, Trash2, Eye, Edit3, X, Sparkles, Send, Compass, Lock, Link as LinkIcon, Upload, ExternalLink, RefreshCw, Search, FileText, Video, Image as ImageIcon, UploadCloud, Download, LogOut, Filter, Users, Globe
 } from 'lucide-react';
 import { Profile, IncentiveCycle, Goal, Proof } from '../types';
-import { isCycleLocked, isJuly2026Cycle, isAugust2026GoalContentLocked } from '../cycleLock';
+import { isCycleLocked, isJuly2026Cycle } from '../cycleLock';
 import {
   isAugust2026Cycle,
   isAugust2026EligibleProfile,
@@ -462,7 +462,6 @@ export default function MyGoals() {
   const selectedCycle = cycles.find((c) => c.id === selectedCycleId) || null;
   const isSelectedCycleLocked = isCycleLocked(selectedCycle);
   const isAugustCycle = isAugust2026Cycle(selectedCycle);
-  const isAugustGoalContentLocked = isAugust2026GoalContentLocked(selectedCycle);
   const isProfileEligible = (profile: Profile | null | undefined) =>
     isAugust2026EligibleProfile(profile, selectedCycle);
   const cycleGoals = isAugustCycle
@@ -474,7 +473,7 @@ export default function MyGoals() {
 
   const ensureProgressEditable = () => {
     if (isSelectedCycleLocked) {
-      setErrorMsg('July 2026 is locked. Progress and goal edits are no longer allowed.');
+      setErrorMsg(`${getCycleDisplayName(selectedCycle?.name || 'This cycle')} is locked. Progress and goal edits are no longer allowed.`);
       return false;
     }
     const profile = resolveSessionProfile(profilesList);
@@ -487,10 +486,6 @@ export default function MyGoals() {
 
   const ensureGoalContentEditable = () => {
     if (!ensureProgressEditable()) return false;
-    if (isAugustGoalContentLocked) {
-      setErrorMsg('August goals are locked. Only progress can be updated.');
-      return false;
-    }
     return true;
   };
 
@@ -1172,7 +1167,7 @@ export default function MyGoals() {
     : [];
   const isLoggedInEligibleForCycle = isProfileEligible(loggedInProfile);
   const canEditGoalContent =
-    !!loggedInProfile && !isSelectedCycleLocked && isLoggedInEligibleForCycle && !isAugustGoalContentLocked;
+    !!loggedInProfile && !isSelectedCycleLocked && isLoggedInEligibleForCycle;
   const canUpdateProgress =
     !!loggedInProfile && !isSelectedCycleLocked && isLoggedInEligibleForCycle;
 
@@ -1273,7 +1268,7 @@ export default function MyGoals() {
                 {cycles.map((c) => (
                   <option key={c.id} value={c.id} className="bg-[#0e0e12] text-white">
                     {getCycleDisplayName(c.name)}
-                    {isCycleLocked(c) ? ' (Locked)' : isAugust2026GoalContentLocked(c) ? ' (Goals locked)' : c.status === 'Draft' ? ' (Draft)' : ''}
+                    {isCycleLocked(c) ? ' (Locked)' : c.status === 'Draft' ? ' (Draft)' : ''}
                   </option>
                 ))}
               </select>
@@ -1288,6 +1283,18 @@ export default function MyGoals() {
               >
                 <Download className="w-3.5 h-3.5" />
                 July CSV
+              </button>
+            )}
+
+            {selectedCycle && isAugust2026Cycle(selectedCycle) && (
+              <button
+                type="button"
+                onClick={downloadCycleProgressCsv}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:text-white hover:border-zinc-700 text-xs font-mono font-bold uppercase transition-all cursor-pointer"
+                title="Download August progress report"
+              >
+                <Download className="w-3.5 h-3.5" />
+                August CSV
               </button>
             )}
 
@@ -1336,6 +1343,7 @@ export default function MyGoals() {
             <span>
               {getCycleDisplayName(selectedCycle?.name || 'This cycle')} is locked. Progress, proofs, and goal edits are read-only.
               {selectedCycle && isJuly2026Cycle(selectedCycle) ? ' Use the July CSV button in the header to download final progress.' : ''}
+              {selectedCycle && isAugust2026Cycle(selectedCycle) ? ' Use the August CSV button in the header to download final progress.' : ''}
             </span>
           </div>
         )}
@@ -1811,11 +1819,11 @@ export default function MyGoals() {
         {viewMode === 'workspace' && loggedInProfile && (
           <div className="space-y-6 animate-in fade-in duration-200">
 
-              {isAugustGoalContentLocked && isLoggedInEligibleForCycle && !isSelectedCycleLocked && (
+              {isAugustCycle && isSelectedCycleLocked && (
                 <div className="p-4 bg-amber-950/20 border border-amber-500/30 text-amber-200 text-sm rounded-xl flex items-center gap-3 font-sans">
                   <Lock className="w-4 h-4 shrink-0 text-amber-400" />
                   <span>
-                    August goals are locked. Your submitted goals are final — you can only update progress and upload proofs.
+                    August is locked. Your submitted goals and progress are final — use the August CSV button in the header to download results.
                   </span>
                 </div>
               )}

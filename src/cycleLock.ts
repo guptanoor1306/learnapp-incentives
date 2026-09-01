@@ -14,10 +14,10 @@ export function isCycleLocked(
   cycle: { month: number; year: number; status?: string } | null | undefined
 ): boolean {
   if (!cycle) return false;
-  return isJuly2026Cycle(cycle) || cycle.status === 'Closed';
+  return isJuly2026Cycle(cycle) || isAugust2026Cycle(cycle) || cycle.status === 'Closed';
 }
 
-/** August goals are frozen; only progress updates are allowed. */
+/** August 2026 is fully locked — no goal or progress edits. */
 export function isAugust2026GoalContentLocked(
   cycle: { month: number; year: number } | null | undefined
 ): boolean {
