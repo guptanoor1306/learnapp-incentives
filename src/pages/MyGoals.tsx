@@ -340,7 +340,9 @@ export default function MyGoals() {
       setRosterLoaded(loadedProfiles.length > 0);
 
       if (cyclesData.length > 0) {
+        const septemberCycle = cyclesData.find((c) => c.month === 9 && c.year === 2026);
         const activeCycle =
+          septemberCycle ||
           cyclesData.find((c) => c.status === 'Active') ||
           cyclesData.find((c) => c.status !== 'Draft') ||
           cyclesData[0];
