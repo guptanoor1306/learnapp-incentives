@@ -12,6 +12,7 @@
     "start": "node dist/server.cjs",
     "seed": "tsx src/db/seed.ts",
     "seed:goals": "tsx src/db/seed-goals.ts",
+    "seed:sept-goals": "tsx scripts/import-september-goals.ts",
     "export:july-progress": "tsx scripts/export-july-progress.ts",
     "export:august-progress": "tsx scripts/export-august-progress.ts",
     "apply:august-eligibility": "tsx scripts/apply-august-eligibility.ts",
