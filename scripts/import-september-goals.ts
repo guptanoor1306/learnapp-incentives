@@ -133,12 +133,35 @@ function parseGoalsFromCsv(content: string): ParsedGoal[] {
   return parsed;
 }
 
+const TEAM_MEMBER_ALIASES: Record<string, string> = {
+  'kumar priyanshu': 'priyanshu kumar',
+  'deepak ch': 'deepak ch.',
+  abid: 'mod abid',
+  wasim: 'md wasim',
+  'deepak k': 'deepak kumar',
+  amandeep: 'aman deep',
+};
+
 function findProfile(teamMemberName: string, allProfiles: typeof profiles.$inferSelect[]) {
   const needle = teamMemberName.trim().toLowerCase();
+  const search = TEAM_MEMBER_ALIASES[needle] || needle;
+
   return allProfiles.find((profile) => {
     const full = profile.fullName.toLowerCase();
-    const first = full.split(/\s+/)[0];
-    return full === needle || full.startsWith(`${needle} `) || first === needle;
+    const parts = full.split(/\s+/);
+    const first = parts[0];
+    const searchParts = search.split(/\s+/).filter(Boolean);
+
+    if (searchParts.length > 1 && searchParts.every((part) => full.includes(part))) {
+      return true;
+    }
+
+    return (
+      full === search ||
+      full.startsWith(`${search} `) ||
+      first === search ||
+      full.replace(/\./g, '').includes(search.replace(/\./g, ''))
+    );
   });
 }
 
