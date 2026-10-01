@@ -15,6 +15,8 @@
     "seed:sept-goals": "tsx scripts/import-september-goals.ts",
     "export:july-progress": "tsx scripts/export-july-progress.ts",
     "export:august-progress": "tsx scripts/export-august-progress.ts",
+    "export:september-progress": "tsx scripts/export-september-progress.ts",
+    "export:september-progress": "tsx scripts/export-september-progress.ts",
     "apply:august-eligibility": "tsx scripts/apply-august-eligibility.ts",
     "extract:july-goals": "python3 scripts/extract-july-goals.py",
     "db:push": "drizzle-kit push --config src/db/drizzle.config.ts",
