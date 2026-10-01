@@ -4,11 +4,8 @@ import {
   Flame, Plus, Trash2, Eye, Edit3, X, Sparkles, Send, Compass, Lock, Link as LinkIcon, Upload, ExternalLink, RefreshCw, Search, FileText, Video, Image as ImageIcon, UploadCloud, Download, LogOut, Filter, Users, Globe
 } from 'lucide-react';
 import { Profile, IncentiveCycle, Goal, Proof } from '../types';
-import { isCycleLocked, isJuly2026Cycle } from '../cycleLock';
-import {
-  isAugust2026Cycle,
-  isAugust2026EligibleProfile,
-} from '../augustEligibility';
+import { isCycleLocked, isJuly2026Cycle, isAugust2026Cycle, isSeptember2026Cycle } from '../cycleLock';
+import { isAugust2026EligibleProfile } from '../augustEligibility';
 import {
   averageGoalTypeProgress,
   calculateGoalTypeContributions,
@@ -340,9 +337,9 @@ export default function MyGoals() {
       setRosterLoaded(loadedProfiles.length > 0);
 
       if (cyclesData.length > 0) {
-        const septemberCycle = cyclesData.find((c) => c.month === 9 && c.year === 2026);
+        const octoberCycle = cyclesData.find((c) => c.month === 10 && c.year === 2026);
         const activeCycle =
-          septemberCycle ||
+          octoberCycle ||
           cyclesData.find((c) => c.status === 'Active') ||
           cyclesData.find((c) => c.status !== 'Draft') ||
           cyclesData[0];
@@ -1346,6 +1343,7 @@ export default function MyGoals() {
               {getCycleDisplayName(selectedCycle?.name || 'This cycle')} is locked. Progress, proofs, and goal edits are read-only.
               {selectedCycle && isJuly2026Cycle(selectedCycle) ? ' Use the July CSV button in the header to download final progress.' : ''}
               {selectedCycle && isAugust2026Cycle(selectedCycle) ? ' Use the August CSV button in the header to download final progress.' : ''}
+              {selectedCycle && isSeptember2026Cycle(selectedCycle) ? ' September progress is view-only.' : ''}
             </span>
           </div>
         )}
@@ -1821,11 +1819,11 @@ export default function MyGoals() {
         {viewMode === 'workspace' && loggedInProfile && (
           <div className="space-y-6 animate-in fade-in duration-200">
 
-              {isAugustCycle && isSelectedCycleLocked && (
+              {isSeptember2026Cycle(selectedCycle) && isSelectedCycleLocked && (
                 <div className="p-4 bg-amber-950/20 border border-amber-500/30 text-amber-200 text-sm rounded-xl flex items-center gap-3 font-sans">
                   <Lock className="w-4 h-4 shrink-0 text-amber-400" />
                   <span>
-                    August is locked. Your submitted goals and progress are final — use the August CSV button in the header to download results.
+                    September is locked. Your submitted goals and progress are final and view-only.
                   </span>
                 </div>
               )}

@@ -12,6 +12,7 @@ const REMOVED_EMAILS = [
   'aayush.srivastava@learnapp.com',
   'pratik@learnapp.com',
   'amardeep@learnapp.com',
+  'chandan@learnapp.com',
 ];
 
 dotenv.config();
@@ -241,15 +242,6 @@ async function runSeed() {
       department: 'Technology',
       role: 'manager',
       managerEmail: 'noor@learnapp.com',
-    });
-
-    const chandanKId = await createOrUpdateUser({
-      fullName: 'Chandan Kumar Vishwakarma',
-      email: 'chandan@learnapp.com',
-      jobTitle: '',
-      department: 'Technology',
-      role: 'employee',
-      managerEmail: 'supriya@learnapp.com',
     });
 
     const harshitaVId = await createOrUpdateUser({
@@ -657,8 +649,8 @@ async function runSeed() {
       managerEmail: 'noor@learnapp.com',
     });
 
-    // 2. Ensure July, August, and September 2026 cycles exist
-    console.log('Ensuring July, August, and September 2026 cycles...');
+    // 2. Ensure July–October 2026 cycles exist
+    console.log('Ensuring July–October 2026 cycles...');
     const currentYear = 2026;
 
     async function ensureCycle(data: {
@@ -724,6 +716,18 @@ async function runSeed() {
       goalSubmissionDeadline: '2026-09-10',
       proofSubmissionDeadline: '2026-09-28',
       reviewDeadline: '2026-09-30',
+      status: 'Closed',
+    });
+
+    await ensureCycle({
+      name: 'October 2026 Cycle',
+      month: 10,
+      year: currentYear,
+      startDate: '2026-10-01',
+      endDate: '2026-10-31',
+      goalSubmissionDeadline: '2026-10-10',
+      proofSubmissionDeadline: '2026-10-28',
+      reviewDeadline: '2026-10-31',
       status: 'Active',
     });
 
@@ -766,7 +770,8 @@ async function runSeed() {
     console.log('Seeded Monthly Cycles:');
     console.log('1. July 2026 Cycle      - Closed');
     console.log('2. August 2026 Cycle   - Closed');
-    console.log('3. September 2026 Cycle - Active');
+    console.log('3. September 2026 Cycle - Closed');
+    console.log('4. October 2026 Cycle  - Active');
     console.log('=========================================\n');
 
   } catch (err) {
