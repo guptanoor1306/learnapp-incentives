@@ -88,10 +88,10 @@ function normalizeDepartment(value: string) {
 }
 
 function shouldSkipPerson(department: string, teamMemberName: string) {
+  const member = teamMemberName.trim().toLowerCase();
   if (department === 'Technology') return true;
-  if (department === 'Graphics' && teamMemberName.trim().toLowerCase() === 'pranchal') {
-    return true;
-  }
+  if (department === 'Graphics' && member === 'pranchal') return true;
+  if (member === 'rishabh' || member.startsWith('rishabh ')) return true;
   return false;
 }
 
@@ -182,9 +182,39 @@ function findProfile(teamMemberName: string, allProfiles: typeof profiles.$infer
   });
 }
 
+const OCTOBER_MANUAL_GOALS: Record<
+  string,
+  Array<{
+    goalType: 'personal' | 'business';
+    title: string;
+    description: string;
+    approved: boolean;
+  }>
+> = {
+  'abhishek.sharma@learnapp.com': [
+    {
+      goalType: 'personal',
+      title: 'Workout everyday',
+      description: 'Workout everyday',
+      approved: true,
+    },
+    {
+      goalType: 'business',
+      title:
+        'Test OPUS 5.5 to apply edits and animations to the ZERO1 OG short.',
+      description: 'Figure out SOP to generate 4 videos a day, Talking head',
+      approved: true,
+    },
+  ],
+};
+
+const OCTOBER_MANUAL_GOAL_EMAILS = new Set(Object.keys(OCTOBER_MANUAL_GOALS));
+
 function isSkippedProfile(profile: typeof profiles.$inferSelect) {
   if (profile.department === 'Technology') return true;
-  if (profile.email.toLowerCase() === 'pranchal@learnapp.com') return true;
+  const email = profile.email.toLowerCase();
+  if (email === 'pranchal@learnapp.com') return true;
+  if (email === 'rishabh@learnapp.com') return true;
   return false;
 }
 
@@ -226,7 +256,7 @@ async function importOctoberGoals() {
       )
       .returning({ id: goals.id });
     console.log(
-      `Cleared ${cleared.length} October goal(s) for Technology team and Pranchal (${skippedProfileIds.length} profiles).`
+      `Cleared ${cleared.length} October goal(s) for skipped roster (${skippedProfileIds.length} profiles: Technology, Pranchal, Rishabh).`
     );
   }
 
@@ -240,7 +270,29 @@ async function importOctoberGoals() {
       continue;
     }
     if (isSkippedProfile(profile)) continue;
+    if (OCTOBER_MANUAL_GOAL_EMAILS.has(profile.email.toLowerCase())) continue;
     resolved.push({ profile, goal });
+  }
+
+  for (const email of OCTOBER_MANUAL_GOAL_EMAILS) {
+    const profile = allProfiles.find((p) => p.email.toLowerCase() === email);
+    if (!profile) {
+      console.warn(`Manual October goals: profile not found for ${email}`);
+      continue;
+    }
+    for (const manual of OCTOBER_MANUAL_GOALS[email]) {
+      resolved.push({
+        profile,
+        goal: {
+          department: profile.department,
+          teamMemberName: profile.fullName,
+          goalType: manual.goalType,
+          title: manual.title,
+          description: manual.description,
+          approved: manual.approved,
+        },
+      });
+    }
   }
 
   const employeeIds = [...new Set(resolved.map((entry) => entry.profile.id))];
