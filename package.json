@@ -15,6 +15,7 @@
     "seed:sept-goals": "tsx scripts/import-september-goals.ts",
     "seed:oct-goals": "tsx scripts/import-october-goals.ts --replace",
     "patch:oct-2026": "tsx scripts/patch-october-2026-adjustments.ts",
+    "clear:oct-goals": "tsx scripts/clear-october-goals.ts",
     "export:july-progress": "tsx scripts/export-july-progress.ts",
     "export:august-progress": "tsx scripts/export-august-progress.ts",
     "export:september-progress": "tsx scripts/export-september-progress.ts",
