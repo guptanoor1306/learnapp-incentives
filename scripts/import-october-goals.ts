@@ -118,13 +118,12 @@ function parseGoalsFromCsv(content: string): ParsedGoal[] {
     if (shouldSkipPerson(currentDepartment, currentMember)) continue;
     if (goalTypeCell !== 'personal' && goalTypeCell !== 'business') continue;
 
-    if (managerApproval === 'not approved' || finalApproval === 'not approved') {
-      continue;
-    }
-
     const title = titleCell || descriptionCell.slice(0, 120);
     const description = descriptionCell || titleCell;
     if (!title && !description) continue;
+
+    const notApproved =
+      managerApproval === 'not approved' || finalApproval === 'not approved';
 
     parsed.push({
       department: currentDepartment,
@@ -132,7 +131,7 @@ function parseGoalsFromCsv(content: string): ParsedGoal[] {
       goalType: goalTypeCell as 'personal' | 'business',
       title,
       description,
-      approved: true,
+      approved: !notApproved,
     });
   }
 
@@ -272,7 +271,7 @@ async function importOctoberGoals() {
       beyondBauExplanation: null,
       targetDate: '2026-10-31',
       progressPercentage: 0,
-      status: 'Approved',
+      status: goal.approved ? 'Approved' : 'Pending Approval',
     });
     inserted++;
   }
