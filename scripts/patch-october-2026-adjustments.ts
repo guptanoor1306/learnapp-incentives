@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, ilike } from 'drizzle-orm';
 import { db } from '../src/db/index.ts';
 import { profiles, incentiveCycles, goals } from '../src/db/schema.ts';
 
@@ -30,11 +30,10 @@ async function patch() {
     throw new Error('October 2026 cycle not found.');
   }
 
-  const [rishabh] = await db
-    .select()
-    .from(profiles)
-    .where(eq(profiles.email, RISHABH_EMAIL))
-    .limit(1);
+  const allProfiles = await db.select().from(profiles);
+  const rishabh =
+    allProfiles.find((p) => p.email.toLowerCase() === RISHABH_EMAIL) ||
+    allProfiles.find((p) => p.fullName.toLowerCase().includes('rishabh bangwal'));
 
   if (rishabh) {
     const removed = await db
@@ -46,11 +45,7 @@ async function patch() {
     console.warn(`Profile not found: ${RISHABH_EMAIL}`);
   }
 
-  const [abhishek] = await db
-    .select()
-    .from(profiles)
-    .where(eq(profiles.email, ABHISHEK_EMAIL))
-    .limit(1);
+  const abhishek = allProfiles.find((p) => p.email.toLowerCase() === ABHISHEK_EMAIL);
 
   if (!abhishek) {
     throw new Error(`Profile not found: ${ABHISHEK_EMAIL}`);

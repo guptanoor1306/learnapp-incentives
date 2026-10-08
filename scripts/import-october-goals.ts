@@ -210,11 +210,17 @@ const OCTOBER_MANUAL_GOALS: Record<
 
 const OCTOBER_MANUAL_GOAL_EMAILS = new Set(Object.keys(OCTOBER_MANUAL_GOALS));
 
+const NO_OCTOBER_GOAL_EMAILS = new Set([
+  'pranchal@learnapp.com',
+  'rishabh@learnapp.com',
+  'tushar.kumar@learnapp.com',
+]);
+
 function isSkippedProfile(profile: typeof profiles.$inferSelect) {
   if (profile.department === 'Technology') return true;
   const email = profile.email.toLowerCase();
-  if (email === 'pranchal@learnapp.com') return true;
-  if (email === 'rishabh@learnapp.com') return true;
+  if (NO_OCTOBER_GOAL_EMAILS.has(email)) return true;
+  if (profile.fullName.toLowerCase().includes('rishabh bangwal')) return true;
   return false;
 }
 
