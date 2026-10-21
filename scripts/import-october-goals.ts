@@ -3,6 +3,9 @@ import { readFileSync } from 'fs';
 import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '../src/db/index.ts';
 import { profiles, incentiveCycles, goals } from '../src/db/schema.ts';
+import { isOctober2026EliminatedProfile } from '../src/october2026Elimination.ts';
+
+const OCTOBER_2026 = { month: 10, year: 2026 };
 
 const REPLACE = process.argv.includes('--replace');
 
@@ -210,18 +213,8 @@ const OCTOBER_MANUAL_GOALS: Record<
 
 const OCTOBER_MANUAL_GOAL_EMAILS = new Set(Object.keys(OCTOBER_MANUAL_GOALS));
 
-const NO_OCTOBER_GOAL_EMAILS = new Set([
-  'pranchal@learnapp.com',
-  'rishabh@learnapp.com',
-  'tushar.kumar@learnapp.com',
-]);
-
 function isSkippedProfile(profile: typeof profiles.$inferSelect) {
-  if (profile.department === 'Technology') return true;
-  const email = profile.email.toLowerCase();
-  if (NO_OCTOBER_GOAL_EMAILS.has(email)) return true;
-  if (profile.fullName.toLowerCase().includes('rishabh bangwal')) return true;
-  return false;
+  return isOctober2026EliminatedProfile(profile, OCTOBER_2026);
 }
 
 async function importOctoberGoals() {

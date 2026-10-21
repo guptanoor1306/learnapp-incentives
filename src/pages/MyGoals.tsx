@@ -4,8 +4,19 @@ import {
   Flame, Plus, Trash2, Eye, Edit3, X, Sparkles, Send, Compass, Lock, Link as LinkIcon, Upload, ExternalLink, RefreshCw, Search, FileText, Video, Image as ImageIcon, UploadCloud, Download, LogOut, Filter, Users, Globe
 } from 'lucide-react';
 import { Profile, IncentiveCycle, Goal, Proof } from '../types';
-import { isCycleLocked, isJuly2026Cycle, isAugust2026Cycle, isSeptember2026Cycle } from '../cycleLock';
+import {
+  isCycleLocked,
+  isJuly2026Cycle,
+  isAugust2026Cycle,
+  isSeptember2026Cycle,
+  isOctober2026Cycle,
+} from '../cycleLock';
 import { isAugust2026EligibleProfile } from '../augustEligibility';
+import {
+  getOctober2026EliminationReason,
+  getOctober2026EliminationMessage,
+  isOctober2026EliminatedProfile,
+} from '../october2026Elimination';
 import {
   averageGoalTypeProgress,
   calculateGoalTypeContributions,
@@ -461,14 +472,25 @@ export default function MyGoals() {
   const selectedCycle = cycles.find((c) => c.id === selectedCycleId) || null;
   const isSelectedCycleLocked = isCycleLocked(selectedCycle);
   const isAugustCycle = isAugust2026Cycle(selectedCycle);
-  const isProfileEligible = (profile: Profile | null | undefined) =>
-    isAugust2026EligibleProfile(profile, selectedCycle);
+  const isOctoberCycle = isOctober2026Cycle(selectedCycle);
+  const isProfileEligible = (profile: Profile | null | undefined) => {
+    if (isAugustCycle) return isAugust2026EligibleProfile(profile, selectedCycle);
+    if (isOctoberCycle && isOctober2026EliminatedProfile(profile, selectedCycle)) {
+      return false;
+    }
+    return true;
+  };
   const cycleGoals = isAugustCycle
     ? allGoals.filter((g) => {
         const owner = profilesList.find((p) => p.id === g.employee_id);
         return isAugust2026EligibleProfile(owner, selectedCycle);
       })
-    : allGoals;
+    : isOctoberCycle
+      ? allGoals.filter((g) => {
+          const owner = profilesList.find((p) => p.id === g.employee_id);
+          return !isOctober2026EliminatedProfile(owner, selectedCycle);
+        })
+      : allGoals;
 
   const ensureProgressEditable = () => {
     if (isSelectedCycleLocked) {
@@ -479,6 +501,13 @@ export default function MyGoals() {
     if (isAugustCycle && !isAugust2026EligibleProfile(profile, selectedCycle)) {
       setErrorMsg('You are not eligible for the August 2026 incentive cycle.');
       return false;
+    }
+    if (isOctoberCycle) {
+      const elimination = getOctober2026EliminationReason(profile, selectedCycle);
+      if (elimination) {
+        setErrorMsg(getOctober2026EliminationMessage(elimination));
+        return false;
+      }
     }
     return true;
   };
@@ -1165,6 +1194,10 @@ export default function MyGoals() {
     ? cycleGoals.filter((g) => g.employee_id === sessionUserId)
     : [];
   const isLoggedInEligibleForCycle = isProfileEligible(loggedInProfile);
+  const loggedInOctoberElimination = getOctober2026EliminationReason(
+    loggedInProfile,
+    selectedCycle
+  );
   const canEditGoalContent =
     !!loggedInProfile && !isSelectedCycleLocked && isLoggedInEligibleForCycle;
   const canUpdateProgress =
@@ -1757,11 +1790,28 @@ export default function MyGoals() {
                                 );
                               })}
                             </div>
-                          ) : (
-                            <div className="py-6 text-center border border-dashed border-zinc-900 rounded-xl">
-                              <p className="text-[10px] font-mono text-zinc-600 uppercase">No active goals</p>
+                          ) : (() => {
+                            const elimination = getOctober2026EliminationReason(
+                              employee,
+                              selectedCycle
+                            );
+                            return (
+                            <div className="py-6 text-center border border-dashed border-zinc-900 rounded-xl px-4">
+                              {elimination ? (
+                                <>
+                                  <p className="text-[10px] font-mono text-amber-400 uppercase font-bold">
+                                    Not participating in October 2026
+                                  </p>
+                                  <p className="text-[10px] text-zinc-500 mt-2 max-w-md mx-auto normal-case">
+                                    {getOctober2026EliminationMessage(elimination)}
+                                  </p>
+                                </>
+                              ) : (
+                                <p className="text-[10px] font-mono text-zinc-600 uppercase">No active goals</p>
+                              )}
                             </div>
-                          )}
+                            );
+                          })()}
 
 
 
@@ -2114,6 +2164,13 @@ export default function MyGoals() {
                 <p className="text-xs font-mono text-amber-400 uppercase font-bold">Not eligible for August 2026</p>
                 <p className="text-[10px] text-zinc-500 max-w-md mx-auto">
                   Goals were not submitted by the 6 August deadline, or required business goals were not added.
+                </p>
+              </div>
+            ) : isOctoberCycle && loggedInOctoberElimination ? (
+              <div className="py-12 text-center bg-zinc-950/20 rounded-xl border border-dashed border-amber-500/30 space-y-2 px-4">
+                <p className="text-xs font-mono text-amber-400 uppercase font-bold">Not participating in October 2026</p>
+                <p className="text-[10px] text-zinc-400 max-w-md mx-auto normal-case">
+                  {getOctober2026EliminationMessage(loggedInOctoberElimination)}
                 </p>
               </div>
             ) : (

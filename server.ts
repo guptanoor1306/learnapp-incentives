@@ -17,6 +17,10 @@ import {
 } from './src/db/schema.ts';
 import { isCycleLocked, isAugust2026Cycle } from './src/cycleLock.ts';
 import { isAugust2026EligibleEmail } from './src/augustEligibility.ts';
+import {
+  getOctober2026EliminationReason,
+  getOctober2026EliminationMessage,
+} from './src/october2026Elimination.ts';
 
 dotenv.config();
 
@@ -212,6 +216,22 @@ async function assertAugustGoalEmployeeAllowed(cycleId: string, employeeId: stri
   }
 }
 
+async function assertOctoberGoalEmployeeAllowed(cycleId: string, employeeId: string) {
+  const cycle = await getCycleById(cycleId);
+  if (!cycle || cycle.month !== 10 || cycle.year !== 2026) return;
+
+  const [profile] = await db
+    .select({ email: profiles.email, department: profiles.department })
+    .from(profiles)
+    .where(eq(profiles.id, employeeId))
+    .limit(1);
+
+  const reason = getOctober2026EliminationReason(profile, cycle);
+  if (reason) {
+    throw new Error(getOctober2026EliminationMessage(reason));
+  }
+}
+
 async function assertGoalEmployeeAllowed(goalId: string) {
   const [goal] = await db
     .select({ cycleId: goals.cycleId, employeeId: goals.employeeId })
@@ -221,6 +241,7 @@ async function assertGoalEmployeeAllowed(goalId: string) {
 
   if (!goal) return;
   await assertAugustGoalEmployeeAllowed(goal.cycleId, goal.employeeId);
+  await assertOctoberGoalEmployeeAllowed(goal.cycleId, goal.employeeId);
 }
 
 // 1. GENERIC API DATABASE PROXY ROUTE
@@ -289,6 +310,7 @@ app.post('/api/db', async (req, res) => {
         await assertCycleMutationAllowed(camelData.cycleId);
         if (camelData.employeeId) {
           await assertAugustGoalEmployeeAllowed(camelData.cycleId, camelData.employeeId);
+          await assertOctoberGoalEmployeeAllowed(camelData.cycleId, camelData.employeeId);
         }
       }
 
