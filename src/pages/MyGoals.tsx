@@ -1063,7 +1063,13 @@ export default function MyGoals() {
     };
 
     const rows = profilesList
-      .filter((profile) => !isAugustCycle || isProfileEligible(profile))
+      .filter((profile) => {
+        if (isAugustCycle && !isProfileEligible(profile)) return false;
+        if (isOctoberCycle && isOctober2026EliminatedProfile(profile, selectedCycle)) {
+          return false;
+        }
+        return true;
+      })
       .map((profile) => {
         const pGoals = cycleGoals.filter((g) => g.employee_id === profile.id);
         const goalInputs = pGoals.map((g) => ({
@@ -1112,6 +1118,13 @@ export default function MyGoals() {
   // Filter profiles based on selected department, no goals filter, and text search
   const filteredProfiles = profilesList.filter(p => {
     if (isAugustCycle && !isProfileEligible(p)) return false;
+    if (
+      isOctoberCycle &&
+      !showNoGoalsOnly &&
+      isOctober2026EliminatedProfile(p, selectedCycle)
+    ) {
+      return false;
+    }
     if (selectedDepartment !== 'All' && p.department !== selectedDepartment) return false;
     
     const pGoals = cycleGoals.filter(g => g.employee_id === p.id);
@@ -1179,9 +1192,15 @@ export default function MyGoals() {
       proofStamps,
       bonusStamps,
       totalStamps,
-      cheersCount
+      cheersCount,
+      octoberElimination: getOctober2026EliminationReason(p, selectedCycle),
     };
   }).sort((a, b) => {
+    if (isOctoberCycle) {
+      const aElim = !!a.octoberElimination;
+      const bElim = !!b.octoberElimination;
+      if (aElim !== bElim) return aElim ? 1 : -1;
+    }
     if (b.calculatedProgress !== a.calculatedProgress) {
       return b.calculatedProgress - a.calculatedProgress;
     }
@@ -1514,6 +1533,10 @@ export default function MyGoals() {
                   const totalGoals = employee.goalsCount;
                   const completedGoals = employee.goals.filter(g => g.progress_percentage === 100).length;
                   const isExpanded = expandedEmployeeId === employee.id;
+                  const isOctoberEliminatedRow = !!employee.octoberElimination;
+                  const rankedIndex = isOctoberEliminatedRow
+                    ? -1
+                    : sortedLeaderboard.slice(0, index + 1).filter((e) => !e.octoberElimination).length - 1;
 
                   return (
                     <div key={employee.id} className="space-y-2">
@@ -1522,6 +1545,8 @@ export default function MyGoals() {
                         className={`group relative grid grid-cols-12 gap-4 items-center p-4 bg-[#0e0e14] hover:bg-[#0e0e14] rounded-xl border ${
                           isExpanded 
                             ? 'border-amber-500/35 shadow-[0_0_20px_rgba(245,158,11,0.06)]' 
+                            : isOctoberEliminatedRow
+                            ? 'border-amber-950/50 hover:border-amber-900/40'
                             : 'border-zinc-900 hover:border-zinc-800'
                         } transition-all duration-200 cursor-pointer`}
                       >
@@ -1529,12 +1554,14 @@ export default function MyGoals() {
                         {/* COL 1: Rank & Name */}
                         <div className="col-span-12 md:col-span-3 flex items-center gap-3">
                           <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono font-black text-xs shrink-0 ${
-                            index === 0 ? 'bg-amber-400 text-black shadow-md shadow-amber-400/20' :
-                            index === 1 ? 'bg-amber-200 text-black shadow-md shadow-amber-200/20' :
-                            index === 2 ? 'bg-orange-700 text-white shadow-md shadow-orange-700/20' :
+                            isOctoberEliminatedRow
+                              ? 'bg-amber-950/40 text-amber-500/80 border border-amber-900/30'
+                              : rankedIndex === 0 ? 'bg-amber-400 text-black shadow-md shadow-amber-400/20' :
+                            rankedIndex === 1 ? 'bg-amber-200 text-black shadow-md shadow-amber-200/20' :
+                            rankedIndex === 2 ? 'bg-orange-700 text-white shadow-md shadow-orange-700/20' :
                             'bg-zinc-900 text-amber-200/70 border border-amber-900/40'
                           }`}>
-                            {index + 1}
+                            {isOctoberEliminatedRow ? '—' : rankedIndex + 1}
                           </div>
                           
                           <div className="truncate">
@@ -1554,6 +1581,13 @@ export default function MyGoals() {
 
                         {/* COL 2: Horizontal Stacked Bar Chart */}
                         <div className="col-span-12 md:col-span-6 relative">
+                          {isOctoberEliminatedRow && employee.octoberElimination ? (
+                            <div className="w-full min-h-8 rounded-lg border border-amber-900/40 bg-amber-950/20 px-3 py-2 flex items-center">
+                              <p className="text-[10px] font-mono text-amber-300/90 leading-snug normal-case">
+                                {getOctober2026EliminationMessage(employee.octoberElimination)}
+                              </p>
+                            </div>
+                          ) : (
                           <div className="w-full bg-[#07070a] h-8 rounded-lg overflow-hidden border border-zinc-900 relative flex items-center">
                             
                             {/* Vertical alignment grid markings */}
@@ -1598,15 +1632,21 @@ export default function MyGoals() {
                             </div>
 
                             {/* Zero helper */}
-                            {employee.calculatedProgress === 0 && (
+                            {employee.calculatedProgress === 0 && employee.goalsCount > 0 && (
                               <span className="text-[9px] font-mono text-zinc-600 uppercase tracking-widest pl-3">zero progress</span>
                             )}
                           </div>
+                          )}
                         </div>
 
                         {/* COL 3: Interactive 5-Emoji Stamp Card */}
                         <div className="col-span-12 md:col-span-3 flex items-center justify-between gap-3">
-                          
+                          {isOctoberEliminatedRow ? (
+                            <span className="text-[9px] font-mono text-zinc-600 uppercase tracking-wide md:ml-auto">
+                              Not ranked
+                            </span>
+                          ) : (
+                          <>
                           {/* Unlocks visual card */}
                           <div className="flex gap-1.5 bg-[#0e0e14] p-1.5 rounded-lg border border-zinc-900 shrink-0">
                             {SMILEYS.map((sm, smIdx) => {
@@ -1679,6 +1719,8 @@ export default function MyGoals() {
                                );
                              })()}
                            </div>
+                          </>
+                          )}
 
                         </div>
 
