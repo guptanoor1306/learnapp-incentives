@@ -1361,6 +1361,18 @@ export default function MyGoals() {
               </button>
             )}
 
+            {selectedCycle && isOctober2026Cycle(selectedCycle) && (
+              <button
+                type="button"
+                onClick={downloadCycleProgressCsv}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:text-white hover:border-zinc-700 text-xs font-mono font-bold uppercase transition-all cursor-pointer"
+                title="Download October progress report"
+              >
+                <Download className="w-3.5 h-3.5" />
+                October CSV
+              </button>
+            )}
+
             {loggedInProfile && (
               <div className="flex items-center gap-2.5 bg-zinc-900/80 border border-zinc-800/80 pl-3 pr-2 py-1 rounded-xl">
                 <div className="flex flex-col text-right">
@@ -1408,6 +1420,7 @@ export default function MyGoals() {
               {selectedCycle && isJuly2026Cycle(selectedCycle) ? ' Use the July CSV button in the header to download final progress.' : ''}
               {selectedCycle && isAugust2026Cycle(selectedCycle) ? ' Use the August CSV button in the header to download final progress.' : ''}
               {selectedCycle && isSeptember2026Cycle(selectedCycle) ? ' Use the September CSV button in the header to download final progress.' : ''}
+              {selectedCycle && isOctober2026Cycle(selectedCycle) ? ' Use the October CSV button in the header to download final progress.' : ''}
             </span>
           </div>
         )}
@@ -1928,6 +1941,15 @@ export default function MyGoals() {
                   <Lock className="w-4 h-4 shrink-0 text-amber-400" />
                   <span>
                     September is locked. Your submitted goals and progress are final and view-only.
+                  </span>
+                </div>
+              )}
+
+              {isOctober2026Cycle(selectedCycle) && isSelectedCycleLocked && (
+                <div className="p-4 bg-amber-950/20 border border-amber-500/30 text-amber-200 text-sm rounded-xl flex items-center gap-3 font-sans">
+                  <Lock className="w-4 h-4 shrink-0 text-amber-400" />
+                  <span>
+                    October is locked. Your submitted goals and progress are final and view-only.
                   </span>
                 </div>
               )}

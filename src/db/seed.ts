@@ -728,7 +728,7 @@ async function runSeed() {
       goalSubmissionDeadline: '2026-10-10',
       proofSubmissionDeadline: '2026-10-28',
       reviewDeadline: '2026-10-31',
-      status: 'Active',
+      status: 'Closed',
     });
 
     const [julyCycle] = await db
@@ -771,7 +771,7 @@ async function runSeed() {
     console.log('1. July 2026 Cycle      - Closed');
     console.log('2. August 2026 Cycle   - Closed');
     console.log('3. September 2026 Cycle - Closed');
-    console.log('4. October 2026 Cycle  - Active');
+    console.log('4. October 2026 Cycle  - Closed');
     console.log('=========================================\n');
 
   } catch (err) {

@@ -30,6 +30,7 @@ export function isCycleLocked(
     isJuly2026Cycle(cycle) ||
     isAugust2026Cycle(cycle) ||
     isSeptember2026Cycle(cycle) ||
+    isOctober2026Cycle(cycle) ||
     cycle.status === 'Closed'
   );
 }
