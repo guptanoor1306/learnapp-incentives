@@ -1325,51 +1325,15 @@ export default function MyGoals() {
               </select>
             </div>
 
-            {selectedCycle && isJuly2026Cycle(selectedCycle) && (
+            {selectedCycle && isSelectedCycleLocked && (
               <button
                 type="button"
                 onClick={downloadCycleProgressCsv}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:text-white hover:border-zinc-700 text-xs font-mono font-bold uppercase transition-all cursor-pointer"
-                title="Download July progress report"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:text-white hover:border-zinc-700 text-xs font-mono font-bold uppercase transition-all cursor-pointer shrink-0"
+                title={`Download ${getCycleDisplayName(selectedCycle.name)} progress report`}
               >
                 <Download className="w-3.5 h-3.5" />
-                July CSV
-              </button>
-            )}
-
-            {selectedCycle && isAugust2026Cycle(selectedCycle) && (
-              <button
-                type="button"
-                onClick={downloadCycleProgressCsv}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:text-white hover:border-zinc-700 text-xs font-mono font-bold uppercase transition-all cursor-pointer"
-                title="Download August progress report"
-              >
-                <Download className="w-3.5 h-3.5" />
-                August CSV
-              </button>
-            )}
-
-            {selectedCycle && isSeptember2026Cycle(selectedCycle) && (
-              <button
-                type="button"
-                onClick={downloadCycleProgressCsv}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:text-white hover:border-zinc-700 text-xs font-mono font-bold uppercase transition-all cursor-pointer"
-                title="Download September progress report"
-              >
-                <Download className="w-3.5 h-3.5" />
-                September CSV
-              </button>
-            )}
-
-            {selectedCycle && isOctober2026Cycle(selectedCycle) && (
-              <button
-                type="button"
-                onClick={downloadCycleProgressCsv}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:text-white hover:border-zinc-700 text-xs font-mono font-bold uppercase transition-all cursor-pointer"
-                title="Download October progress report"
-              >
-                <Download className="w-3.5 h-3.5" />
-                October CSV
+                {getCycleDisplayName(selectedCycle.name)} CSV
               </button>
             )}
 
@@ -1417,10 +1381,7 @@ export default function MyGoals() {
             <Lock className="w-4 h-4 shrink-0 text-amber-400" />
             <span>
               {getCycleDisplayName(selectedCycle?.name || 'This cycle')} is locked. Progress, proofs, and goal edits are read-only.
-              {selectedCycle && isJuly2026Cycle(selectedCycle) ? ' Use the July CSV button in the header to download final progress.' : ''}
-              {selectedCycle && isAugust2026Cycle(selectedCycle) ? ' Use the August CSV button in the header to download final progress.' : ''}
-              {selectedCycle && isSeptember2026Cycle(selectedCycle) ? ' Use the September CSV button in the header to download final progress.' : ''}
-              {selectedCycle && isOctober2026Cycle(selectedCycle) ? ' Use the October CSV button in the header to download final progress.' : ''}
+              {' Use the CSV button in the header to download final progress.'}
             </span>
           </div>
         )}
