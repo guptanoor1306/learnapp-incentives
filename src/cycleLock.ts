@@ -22,6 +22,12 @@ export function isOctober2026Cycle(
   return !!cycle && cycle.month === 10 && cycle.year === 2026;
 }
 
+export function isNovember2026Cycle(
+  cycle: { month: number; year: number } | null | undefined
+): boolean {
+  return !!cycle && cycle.month === 11 && cycle.year === 2026;
+}
+
 export function isCycleLocked(
   cycle: { month: number; year: number; status?: string } | null | undefined
 ): boolean {

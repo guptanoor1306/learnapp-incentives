@@ -649,8 +649,8 @@ async function runSeed() {
       managerEmail: 'noor@learnapp.com',
     });
 
-    // 2. Ensure July–October 2026 cycles exist
-    console.log('Ensuring July–October 2026 cycles...');
+    // 2. Ensure July–November 2026 cycles exist
+    console.log('Ensuring July–November 2026 cycles...');
     const currentYear = 2026;
 
     async function ensureCycle(data: {
@@ -731,6 +731,18 @@ async function runSeed() {
       status: 'Closed',
     });
 
+    await ensureCycle({
+      name: 'November 2026 Cycle',
+      month: 11,
+      year: currentYear,
+      startDate: '2026-11-01',
+      endDate: '2026-11-30',
+      goalSubmissionDeadline: '2026-11-10',
+      proofSubmissionDeadline: '2026-11-28',
+      reviewDeadline: '2026-11-30',
+      status: 'Active',
+    });
+
     const [julyCycle] = await db
       .select({ id: incentiveCycles.id })
       .from(incentiveCycles)
@@ -772,6 +784,7 @@ async function runSeed() {
     console.log('2. August 2026 Cycle   - Closed');
     console.log('3. September 2026 Cycle - Closed');
     console.log('4. October 2026 Cycle  - Closed');
+    console.log('5. November 2026 Cycle - Active');
     console.log('=========================================\n');
 
   } catch (err) {
