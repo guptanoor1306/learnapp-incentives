@@ -24,6 +24,7 @@
     "export:september-progress": "tsx scripts/export-september-progress.ts",
     "export:october-progress": "tsx scripts/export-october-progress.ts",
     "apply:august-eligibility": "tsx scripts/apply-august-eligibility.ts",
+    "purge:jul-sep-2026": "tsx scripts/purge-closed-cycle-data.ts --confirm",
     "extract:july-goals": "python3 scripts/extract-july-goals.py",
     "db:push": "drizzle-kit push --config src/db/drizzle.config.ts",
     "clean": "rm -rf dist server.js",
