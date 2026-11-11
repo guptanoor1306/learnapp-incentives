@@ -15,6 +15,7 @@
     "seed:sept-goals": "tsx scripts/import-september-goals.ts",
     "seed:oct-goals": "tsx scripts/import-october-goals.ts --replace",
     "seed:nov-goals": "tsx scripts/import-november-goals.ts --replace",
+    "patch:nov-abhishek": "tsx scripts/patch-november-abhishek-sharma.ts",
     "patch:oct-2026": "tsx scripts/patch-october-2026-adjustments.ts",
     "clear:oct-goals": "tsx scripts/clear-october-goals.ts",
     "apply:oct-eliminations": "tsx scripts/apply-october-eliminations.ts",

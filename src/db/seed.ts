@@ -13,6 +13,8 @@ const REMOVED_EMAILS = [
   'pratik@learnapp.com',
   'amardeep@learnapp.com',
   'chandan@learnapp.com',
+  'pranchal@learnapp.com',
+  'priyanshu.kumar@learnapp.com',
 ];
 
 dotenv.config();
@@ -335,15 +337,6 @@ async function runSeed() {
       managerEmail: 'anubha@learnapp.com',
     });
 
-    const pranchalCId = await createOrUpdateUser({
-      fullName: 'Pranchal Chaudhary',
-      email: 'pranchal@learnapp.com',
-      jobTitle: '',
-      department: 'Graphics',
-      role: 'employee',
-      managerEmail: 'anubha@learnapp.com',
-    });
-
     const rajId = await createOrUpdateUser({
       fullName: 'Raj',
       email: 'raj@learnapp.com',
@@ -545,15 +538,6 @@ async function runSeed() {
       department: 'Content 2',
       role: 'manager',
       managerEmail: 'noor@learnapp.com',
-    });
-
-    const priyanshuKId = await createOrUpdateUser({
-      fullName: 'Priyanshu Kumar',
-      email: 'priyanshu.kumar@learnapp.com',
-      jobTitle: '',
-      department: 'Content 2',
-      role: 'employee',
-      managerEmail: 'pulkit@learnapp.com',
     });
 
     // Social Team (Tanya Khanna is manager)

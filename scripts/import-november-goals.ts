@@ -200,6 +200,28 @@ function findProfile(teamMemberName: string, allProfiles: typeof profiles.$infer
   });
 }
 
+const NOVEMBER_MANUAL_GOALS: Record<
+  string,
+  Array<{ goalType: 'personal' | 'business'; title: string; description: string }>
+> = {
+  'abhishek.sharma@learnapp.com': [
+    {
+      goalType: 'personal',
+      title: 'Solo travelling and camping in car',
+      description: 'Solo travelling and camping in car',
+    },
+    {
+      goalType: 'business',
+      title: 'Experimenting with new IP for OG shorts',
+      description: `1. Salary Breakdown
+2. ₹1 Lakh Challenge
+3. Comment-Based IP`,
+    },
+  ],
+};
+
+const NOVEMBER_MANUAL_GOAL_EMAILS = new Set(Object.keys(NOVEMBER_MANUAL_GOALS));
+
 function writeOptOutSourceFile(emails: string[]) {
   const sorted = [...new Set(emails.map((e) => e.toLowerCase()))].sort();
   const body = sorted.map((e) => `    '${e}',`).join('\n');
@@ -281,7 +303,28 @@ async function importNovemberGoals() {
       continue;
     }
     if (optOutIds.includes(profile.id)) continue;
+    if (NOVEMBER_MANUAL_GOAL_EMAILS.has(profile.email.toLowerCase())) continue;
     resolved.push({ profile, goal });
+  }
+
+  for (const email of NOVEMBER_MANUAL_GOAL_EMAILS) {
+    const profile = allProfiles.find((p) => p.email.toLowerCase() === email);
+    if (!profile) {
+      console.warn(`Manual November goals: profile not found for ${email}`);
+      continue;
+    }
+    for (const manual of NOVEMBER_MANUAL_GOALS[email]) {
+      resolved.push({
+        profile,
+        goal: {
+          department: profile.department,
+          teamMemberName: profile.fullName,
+          goalType: manual.goalType,
+          title: manual.title,
+          description: manual.description,
+        },
+      });
+    }
   }
 
   const employeeIds = [...new Set(resolved.map((entry) => entry.profile.id))];
