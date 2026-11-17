@@ -23,6 +23,11 @@ import {
   NOVEMBER_2026_OPT_OUT_MESSAGE,
 } from '../november2026OptOut';
 import {
+  getNovember2026EliminationReason,
+  getNovember2026EliminationMessage,
+  isNovember2026EliminatedProfile,
+} from '../november2026Elimination';
+import {
   averageGoalTypeProgress,
   calculateGoalTypeContributions,
   calculateLeaderboardProgress,
@@ -487,6 +492,9 @@ export default function MyGoals() {
     if (isNovemberCycle && isNovember2026OptOutProfile(profile, selectedCycle)) {
       return false;
     }
+    if (isNovemberCycle && isNovember2026EliminatedProfile(profile, selectedCycle)) {
+      return false;
+    }
     return true;
   };
   const cycleGoals = isAugustCycle
@@ -502,7 +510,9 @@ export default function MyGoals() {
       : isNovemberCycle
         ? allGoals.filter((g) => {
             const owner = profilesList.find((p) => p.id === g.employee_id);
-            return !isNovember2026OptOutProfile(owner, selectedCycle);
+            if (isNovember2026OptOutProfile(owner, selectedCycle)) return false;
+            if (isNovember2026EliminatedProfile(owner, selectedCycle)) return false;
+            return true;
           })
         : allGoals;
 
@@ -523,9 +533,16 @@ export default function MyGoals() {
         return false;
       }
     }
-    if (isNovemberCycle && isNovember2026OptOutProfile(profile, selectedCycle)) {
-      setErrorMsg(NOVEMBER_2026_OPT_OUT_MESSAGE);
-      return false;
+    if (isNovemberCycle) {
+      const novemberElimination = getNovember2026EliminationReason(profile, selectedCycle);
+      if (novemberElimination) {
+        setErrorMsg(getNovember2026EliminationMessage(novemberElimination));
+        return false;
+      }
+      if (isNovember2026OptOutProfile(profile, selectedCycle)) {
+        setErrorMsg(NOVEMBER_2026_OPT_OUT_MESSAGE);
+        return false;
+      }
     }
     return true;
   };
@@ -1086,6 +1103,9 @@ export default function MyGoals() {
         if (isOctoberCycle && isOctober2026EliminatedProfile(profile, selectedCycle)) {
           return false;
         }
+        if (isNovemberCycle && isNovember2026EliminatedProfile(profile, selectedCycle)) {
+          return false;
+        }
         return true;
       })
       .map((profile) => {
@@ -1220,6 +1240,7 @@ export default function MyGoals() {
       cheersCount,
       octoberElimination: getOctober2026EliminationReason(p, selectedCycle),
       novemberOptOut: isNovember2026OptOutProfile(p, selectedCycle),
+      novemberElimination: getNovember2026EliminationReason(p, selectedCycle),
     };
   }).sort((a, b) => {
     if (isOctoberCycle) {
@@ -1228,9 +1249,9 @@ export default function MyGoals() {
       if (aElim !== bElim) return aElim ? 1 : -1;
     }
     if (isNovemberCycle) {
-      const aOpt = !!a.novemberOptOut;
-      const bOpt = !!b.novemberOptOut;
-      if (aOpt !== bOpt) return aOpt ? 1 : -1;
+      const aNonRanked = !!a.novemberOptOut || !!a.novemberElimination;
+      const bNonRanked = !!b.novemberOptOut || !!b.novemberElimination;
+      if (aNonRanked !== bNonRanked) return aNonRanked ? 1 : -1;
     }
     if (b.calculatedProgress !== a.calculatedProgress) {
       return b.calculatedProgress - a.calculatedProgress;
@@ -1249,6 +1270,10 @@ export default function MyGoals() {
     selectedCycle
   );
   const loggedInNovemberOptOut = isNovember2026OptOutProfile(loggedInProfile, selectedCycle);
+  const loggedInNovemberElimination = getNovember2026EliminationReason(
+    loggedInProfile,
+    selectedCycle
+  );
   const canEditGoalContent =
     !!loggedInProfile && !isSelectedCycleLocked && isLoggedInEligibleForCycle;
   const canUpdateProgress =
@@ -1541,12 +1566,18 @@ export default function MyGoals() {
                   const isExpanded = expandedEmployeeId === employee.id;
                   const isOctoberEliminatedRow = !!employee.octoberElimination;
                   const isNovemberOptOutRow = isNovemberCycle && !!employee.novemberOptOut;
-                  const isNonRankedRow = isOctoberEliminatedRow || isNovemberOptOutRow;
+                  const isNovemberEliminatedRow =
+                    isNovemberCycle && !!employee.novemberElimination;
+                  const isNonRankedRow =
+                    isOctoberEliminatedRow || isNovemberOptOutRow || isNovemberEliminatedRow;
                   const rankedIndex = isNonRankedRow
                     ? -1
                     : sortedLeaderboard
                         .slice(0, index + 1)
-                        .filter((e) => !e.octoberElimination && !e.novemberOptOut).length - 1;
+                        .filter(
+                          (e) =>
+                            !e.octoberElimination && !e.novemberOptOut && !e.novemberElimination
+                        ).length - 1;
 
                   return (
                     <div key={employee.id} className="space-y-2">
@@ -1595,6 +1626,12 @@ export default function MyGoals() {
                             <div className="w-full min-h-8 rounded-lg border border-amber-900/40 bg-amber-950/20 px-3 py-2 flex items-center">
                               <p className="text-[10px] font-mono text-amber-300/90 leading-snug normal-case">
                                 {getOctober2026EliminationMessage(employee.octoberElimination)}
+                              </p>
+                            </div>
+                          ) : isNovemberEliminatedRow && employee.novemberElimination ? (
+                            <div className="w-full min-h-8 rounded-lg border border-amber-900/40 bg-amber-950/20 px-3 py-2 flex items-center">
+                              <p className="text-[10px] font-mono text-amber-300/90 leading-snug normal-case">
+                                {getNovember2026EliminationMessage(employee.novemberElimination)}
                               </p>
                             </div>
                           ) : isNovemberOptOutRow ? (
@@ -1853,6 +1890,10 @@ export default function MyGoals() {
                               employee,
                               selectedCycle
                             );
+                            const novemberElimination = getNovember2026EliminationReason(
+                              employee,
+                              selectedCycle
+                            );
                             const optedOut = isNovember2026OptOutProfile(employee, selectedCycle);
                             return (
                             <div className="py-6 text-center border border-dashed border-zinc-900 rounded-xl px-4">
@@ -1863,6 +1904,15 @@ export default function MyGoals() {
                                   </p>
                                   <p className="text-[10px] text-zinc-500 mt-2 max-w-md mx-auto normal-case">
                                     {getOctober2026EliminationMessage(elimination)}
+                                  </p>
+                                </>
+                              ) : novemberElimination ? (
+                                <>
+                                  <p className="text-[10px] font-mono text-amber-400 uppercase font-bold">
+                                    Not participating in November 2026
+                                  </p>
+                                  <p className="text-[10px] text-zinc-500 mt-2 max-w-md mx-auto normal-case">
+                                    {getNovember2026EliminationMessage(novemberElimination)}
                                   </p>
                                 </>
                               ) : optedOut ? (
@@ -2248,6 +2298,15 @@ export default function MyGoals() {
                 <p className="text-xs font-mono text-amber-400 uppercase font-bold">Not participating in October 2026</p>
                 <p className="text-[10px] text-zinc-400 max-w-md mx-auto normal-case">
                   {getOctober2026EliminationMessage(loggedInOctoberElimination)}
+                </p>
+              </div>
+            ) : isNovemberCycle && loggedInNovemberElimination ? (
+              <div className="py-12 text-center bg-zinc-950/20 rounded-xl border border-dashed border-amber-500/30 space-y-2 px-4">
+                <p className="text-xs font-mono text-amber-400 uppercase font-bold">
+                  Not participating in November 2026
+                </p>
+                <p className="text-[10px] text-zinc-400 max-w-md mx-auto normal-case">
+                  {getNovember2026EliminationMessage(loggedInNovemberElimination)}
                 </p>
               </div>
             ) : isNovemberCycle && loggedInNovemberOptOut ? (
